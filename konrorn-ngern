@@ -1,0 +1,2265 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LINE LIFF Lucky Draw — ระบบจับสลากรายชื่อผู้โชคดี</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Prompt', sans-serif;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background: #f1f5f9;
+      color: #0f172a;
+      overflow-x: hidden;
+    }
+    /* LINE Green Theme & Accents */
+    .bg-line { background-color: #06C755; }
+    .hover-bg-line:hover { background-color: #05b34c; }
+    .text-line { color: #06C755; }
+    .border-line { border-color: #06C755; }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* 3D Card Flip */
+    .perspective-1000 { perspective: 1000px; }
+    .transform-style-3d { transform-style: preserve-3d; }
+    .backface-hidden { backface-visibility: hidden; }
+    .rotate-y-180 { transform: rotateY(180deg); }
+    .card-inner {
+      transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .card-flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    /* Mystery Box Shake Animation */
+    @keyframes shakeBox {
+      0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+      15% { transform: translate(-6px, -4px) rotate(-6deg) scale(1.04); }
+      30% { transform: translate(6px, -2px) rotate(6deg) scale(1.06); }
+      45% { transform: translate(-6px, 2px) rotate(-5deg) scale(1.06); }
+      60% { transform: translate(6px, 4px) rotate(5deg) scale(1.04); }
+      75% { transform: translate(-3px, -2px) rotate(-3deg) scale(1.02); }
+    }
+    .animate-shake {
+      animation: shakeBox 0.55s ease-in-out infinite;
+    }
+
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .animate-pop {
+      animation: popIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Confetti Canvas */
+    #confettiCanvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Confetti Overlay -->
+  <canvas id="confettiCanvas"></canvas>
+
+  <!-- Toast Notification -->
+  <div id="toastContainer" class="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Top Navigation Bar (LINE LIFF Header Style) -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
+      <!-- Brand + LIFF Badge -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-line flex items-center justify-center text-white shadow-sm shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+          </svg>
+        </div>
+        <div class="truncate">
+          <div class="flex items-center gap-1.5">
+            <h1 class="font-bold text-slate-800 text-base sm:text-lg truncate">Lucky Draw LIFF</h1>
+            <span id="liffStatusBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+              <span id="liffStatusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span id="liffStatusText">LINE LIFF</span>
+            </span>
+          </div>
+          <p id="headerRoundTitle" class="text-xs text-slate-500 truncate">กำลังโหลดงวด...</p>
+        </div>
+      </div>
+
+      <!-- Mode Switcher & Audio Toggle -->
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <!-- Sound Button -->
+        <button id="btnToggleSound" type="button" class="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition" title="เปิด/ปิดเสียงเอฟเฟกต์">
+          <svg id="iconSoundOn" class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+          </svg>
+          <svg id="iconSoundOff" class="w-5 h-5 text-slate-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
+          </svg>
+        </button>
+
+        <!-- View Tabs -->
+        <div class="bg-slate-100 p-1 rounded-xl flex items-center">
+          <button id="tabBtnPlay" type="button" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-white text-slate-900 shadow-sm">
+            หน้าจับสลาก
+          </button>
+          <button id="tabBtnHistory" type="button" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-slate-900 relative">
+            ประกาศผล
+            <span id="badgeHistoryCount" class="ml-1 px-1.5 py-0.2 bg-emerald-500 text-white rounded-full text-[10px]">0</span>
+          </button>
+          <button id="tabBtnAdmin" type="button" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-slate-900 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+            <span>แอดมิน</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-5 space-y-6">
+
+    <!-- Active Round Banner & Quick Switcher -->
+    <section class="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 rounded-2xl p-4 sm:p-5 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="space-y-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+            งวดที่เปิดใช้งาน
+          </span>
+          <span id="bannerModeBadge" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-slate-200">
+            โหมด: วงล้อเสี่ยงโชค
+          </span>
+          <span id="bannerRuleBadge" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-200 border border-amber-400/30">
+            กติกา: สุ่มซ้ำได้ (โอกาสเท่ากัน)
+          </span>
+        </div>
+        <h2 id="bannerRoundName" class="text-xl sm:text-2xl font-bold tracking-tight">งวดประจำวันที่ 4 พ.ย. 2569</h2>
+        <p id="bannerRoundDesc" class="text-xs sm:text-sm text-slate-300">ลงชื่อผู้ที่ทำการกดจับสลาก แล้วหมุนวงล้อหรือเปิดการ์ดเพื่อหาชื่อที่ถูกจับตามลำดับ</p>
+      </div>
+
+      <div class="flex flex-col sm:items-end gap-2 shrink-0">
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <label for="selectActiveRound" class="text-xs text-slate-300 whitespace-nowrap">เลือกงวด:</label>
+          <select id="selectActiveRound" class="bg-white/10 border border-white/20 text-white text-xs sm:text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 w-full sm:w-52">
+          </select>
+        </div>
+        <div class="flex items-center gap-3 text-xs text-slate-300">
+          <span>รายชื่อในสลากคงเหลือ: <strong id="statPoolCount" class="text-emerald-400 text-sm">0</strong> ชื่อ</span>
+          <span>•</span>
+          <span>จับไปแล้ว: <strong id="statDrawnCount" class="text-amber-300 text-sm">0</strong> ครั้ง</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW 1: PLAY / LUCKY DRAW SCREEN (LIFF)    -->
+    <!-- ========================================== -->
+    <div id="viewPlay" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- Left Column: Drawer Registration + Game Stage (7 cols) -->
+      <div class="lg:col-span-7 space-y-5">
+
+        <!-- Step 1: ลงชื่อผู้จับสลาก (Drawer Input Card) -->
+        <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200/80 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">1</span>
+              <h3 class="font-bold text-slate-800 text-sm sm:text-base">ลงชื่อผู้จับสลาก (ผู้กดสุ่มในรอบนี้)</h3>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button id="btnLiffLogin" type="button" class="hidden text-xs bg-line hover-bg-line text-white font-semibold px-3 py-1 rounded-lg shadow-sm transition flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 5.92 2 10.75c0 4.32 3.58 7.95 8.44 8.63.33.07.77.22.89.51.1.26.07.66.03.92l-.14.87c-.04.26-.2 1.02.89.56 1.09-.46 5.89-3.47 8.04-5.94C21.6 14.54 22 12.72 22 10.75 22 5.92 17.52 2 12 2z"/></svg>
+                <span>ล็อกอิน LINE</span>
+              </button>
+              <button id="btnSimulateLineProfile" type="button" class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 transition">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 5.92 2 10.75c0 4.32 3.58 7.95 8.44 8.63.33.07.77.22.89.51.1.26.07.66.03.92l-.14.87c-.04.26-.2 1.02.89.56 1.09-.46 5.89-3.47 8.04-5.94C21.6 14.54 22 12.72 22 10.75 22 5.92 17.52 2 12 2z"/></svg>
+                <span id="lblFetchLineBtn">ดึงชื่อจาก LINE</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Connected LINE Profile Banner (Shown when logged in via LIFF) -->
+          <div id="liffProfileBanner" class="hidden items-center justify-between gap-3 bg-emerald-50/80 border border-emerald-200 rounded-xl p-2.5">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <img id="liffAvatarImg" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><rect width='40' height='40' fill='%2306C755'/></svg>" alt="LINE Avatar" class="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm shrink-0" />
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <p id="liffDisplayName" class="text-xs sm:text-sm font-bold text-slate-800 truncate">-</p>
+                  <span id="liffEnvTag" class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-600 text-white">In-Client</span>
+                </div>
+                <p id="liffStatusMessage" class="text-[11px] text-slate-500 truncate">เชื่อมต่อบัญชี LINE เรียบร้อยแล้ว</p>
+              </div>
+            </div>
+            <button id="btnUseMyLineName" type="button" class="px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition shrink-0">
+              ใช้ชื่อนี้
+            </button>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2.5">
+            <div class="relative flex-1">
+              <input id="inputDrawerName" type="text" placeholder="พิมพ์ชื่อของคุณ เช่น คุณสมชาย, แอดมินเมย์..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+              <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+              </svg>
+            </div>
+            <button id="btnClearDrawer" type="button" class="px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-100 transition shrink-0">
+              ล้างชื่อ
+            </button>
+          </div>
+
+          <!-- Quick select from registered drawers if available -->
+          <div id="quickDrawerChipsWrap" class="pt-1 hidden">
+            <p class="text-[11px] text-slate-400 mb-1.5">หรือเลือกจากรายชื่อผู้จับที่ลงทะเบียนไว้ (คลิกเพื่อเลือก):</p>
+            <div id="quickDrawerChips" class="flex flex-wrap gap-1.5"></div>
+          </div>
+        </div>
+
+        <!-- Step 2: พื้นที่สุ่มสลาก (Interactive Game Stage) -->
+        <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">2</span>
+              <h3 class="font-bold text-slate-800 text-sm sm:text-base">จับสลากหาผู้โชคดี</h3>
+            </div>
+
+            <!-- Format Switcher Pill (Allows instant preview or follows round setting) -->
+            <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button id="modeSwitchWheel" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1">
+                <span>🎡</span> <span>วงล้อ</span>
+              </button>
+              <button id="modeSwitchCards" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1">
+                <span>🃏</span> <span>เปิดการ์ด</span>
+              </button>
+              <button id="modeSwitchBox" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1">
+                <span>🎁</span> <span>กล่องสุ่ม</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Empty Pool Warning -->
+          <div id="emptyPoolNotice" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-6 text-center space-y-3">
+            <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-xl">⚠️</div>
+            <h4 class="font-bold text-amber-900">ไม่มีรายชื่อคงเหลือในสลากแล้ว</h4>
+            <p class="text-xs text-amber-700 max-w-md mx-auto">รายชื่อทั้งหมดในงวดนี้ถูกจับครบแล้ว หรือยังไม่ได้เพิ่มรายชื่อ กรุณาไปที่หน้าแอดมินเพื่อเพิ่มรายชื่อหรือรีเซ็ตงวด</p>
+            <button id="btnGoAdminFromEmpty" type="button" class="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition">
+              ไปที่ตั้งค่าแอดมิน
+            </button>
+          </div>
+
+          <!-- STAGE A: SPIN WHEEL -->
+          <div id="stageWheel" class="flex flex-col items-center justify-center py-2 space-y-5">
+            <div class="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center">
+              <!-- Top Pointer Arrow -->
+              <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-20 drop-shadow-md">
+                <svg class="w-9 h-9 text-rose-600" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 22L4 6h16l-8 16z" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <canvas id="wheelCanvas" width="340" height="340" class="w-full h-full rounded-full shadow-lg border-4 border-white"></canvas>
+              <!-- Center Spin Cap -->
+              <button id="btnWheelCenterSpin" type="button" class="absolute w-16 h-16 rounded-full bg-slate-900 text-white font-bold text-xs shadow-lg border-4 border-white flex items-center justify-center hover:scale-105 active:scale-95 transition z-10">
+                หมุน!
+              </button>
+            </div>
+
+            <div class="w-full max-w-xs text-center space-y-2">
+              <button id="btnSpinMain" type="button" class="w-full py-3.5 px-6 rounded-2xl bg-line hover-bg-line text-white font-bold text-base shadow-md shadow-emerald-600/20 active:scale-[0.99] transition flex items-center justify-center gap-2">
+                <span>🎡 กดหมุนวงล้อสุ่มชื่อ</span>
+              </button>
+              <p class="text-[11px] text-slate-400">ความน่าจะเป็นเท่ากันทุกชื่อ (1 / <span id="wheelProbCount">0</span>)</p>
+            </div>
+          </div>
+
+          <!-- STAGE B: CARD FLIP -->
+          <div id="stageCards" class="hidden py-2 space-y-4">
+            <div class="flex items-center justify-between bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200/70">
+              <p class="text-xs text-slate-600">ไพ่ทั้งหมดถูกสับแบบสุ่ม (โอกาสเท่ากันทุกใบ) เลือกเปิด 1 ใบเพื่อดูผล</p>
+              <button id="btnShuffleCards" type="button" class="px-3 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition shrink-0">
+                🔀 สับไพ่ใหม่
+              </button>
+            </div>
+            <div id="cardsGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-96 overflow-y-auto p-1">
+              <!-- Cards dynamically rendered here -->
+            </div>
+          </div>
+
+          <!-- STAGE C: MYSTERY BOX -->
+          <div id="stageBox" class="hidden py-6 flex flex-col items-center justify-center space-y-5">
+            <div id="mysteryBoxVisual" class="w-40 h-40 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex flex-col items-center justify-center shadow-xl border-4 border-white cursor-pointer select-none transition transform hover:scale-105">
+              <span class="text-6xl mb-1">🎁</span>
+              <span class="text-xs font-semibold tracking-wider uppercase bg-black/20 px-2.5 py-0.5 rounded-full">Mystery Box</span>
+            </div>
+            <div class="text-center space-y-2 w-full max-w-xs">
+              <button id="btnOpenMysteryBox" type="button" class="w-full py-3.5 px-6 rounded-2xl bg-line hover-bg-line text-white font-bold text-base shadow-md shadow-emerald-600/20 transition">
+                ✨ เปิดกล่องสุ่มรายชื่อ
+              </button>
+              <p class="text-xs text-slate-400">สุ่มรายชื่อด้วยโอกาสเท่ากันทุกชื่อในสลาก</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Right Column: Live Order Feed & Remaining Pool (5 cols) -->
+      <div class="lg:col-span-5 space-y-5">
+
+        <!-- Live Draw Sequence Card -->
+        <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-1.5">
+                <span>🏆 ลำดับผลการจับสลากล่าสุด</span>
+              </h3>
+              <p class="text-xs text-slate-500">เรียงตามลำดับการจับในงวดนี้</p>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button id="btnShareLineFlexQuick" type="button" class="px-2.5 py-1.5 rounded-xl bg-line hover-bg-line text-white text-xs font-semibold transition flex items-center gap-1 shadow-sm" title="แชร์การ์ด Flex Message เข้าแชต LINE">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 5.92 2 10.75c0 4.32 3.58 7.95 8.44 8.63.33.07.77.22.89.51.1.26.07.66.03.92l-.14.87c-.04.26-.2 1.02.89.56 1.09-.46 5.89-3.47 8.04-5.94C21.6 14.54 22 12.72 22 10.75 22 5.92 17.52 2 12 2z"/></svg>
+                <span>แชร์เข้า LINE</span>
+              </button>
+              <button id="btnCopyLineSummaryQuick" type="button" class="px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-semibold transition flex items-center gap-1">
+                <span>คัดลอกส่ง LINE</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="liveResultsList" class="space-y-2 max-h-80 overflow-y-auto pr-1">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Candidate Pool Status Card -->
+        <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-slate-800 text-sm">รายชื่อในสลาก (โอกาสเท่ากันทุกชื่อ)</h3>
+            <span id="poolRuleHint" class="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">ไม่ตัดชื่อออก</span>
+          </div>
+          <div id="poolChipsContainer" class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: FULL ANNOUNCEMENT / BOARD          -->
+    <!-- ========================================== -->
+    <div id="viewHistory" class="hidden space-y-5">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-800">📋 กระดานประกาศรายชื่อผู้ที่จับ และ ผู้ที่ถูกจับเรียงลำดับ</h2>
+            <p id="historySubtitle" class="text-xs sm:text-sm text-slate-500">สรุปผลการจับสลากประจำงวด พร้อมส่งเข้าแชตกลุ่ม LINE</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btnCopyAnnouncementBoard" type="button" class="px-4 py-2 rounded-xl bg-line hover-bg-line text-white text-xs sm:text-sm font-semibold shadow-sm transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+              </svg>
+              <span>คัดลอกข้อความประกาศผลเข้า LINE</span>
+            </button>
+            <button id="btnExportCSV" type="button" class="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold transition">
+              ⬇️ ดาวน์โหลด CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Summary Statistics Row -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/60">
+            <p class="text-xs text-slate-500">จำนวนครั้งที่จับแล้ว</p>
+            <p id="histStatTotalDraws" class="text-xl font-bold text-slate-800 mt-0.5">0 ครั้ง</p>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/60">
+            <p class="text-xs text-slate-500">รายชื่อในสลากคงเหลือ</p>
+            <p id="histStatRemaining" class="text-xl font-bold text-emerald-600 mt-0.5">0 ชื่อ</p>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/60">
+            <p class="text-xs text-slate-500">ผู้ถูกจับบ่อยสุด / ล่าสุด</p>
+            <p id="histStatTopWinner" class="text-sm font-bold text-amber-600 mt-1 truncate">-</p>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/60">
+            <p class="text-xs text-slate-500">กติกาของงวดนี้</p>
+            <p id="histStatRule" class="text-xs font-bold text-slate-700 mt-1.5">-</p>
+          </div>
+        </div>
+
+        <!-- Sequential Table -->
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-600 text-xs uppercase border-b border-slate-200">
+                <th class="py-3 px-4 font-semibold w-20">ลำดับที่</th>
+                <th class="py-3 px-4 font-semibold">ผู้ที่จับ (คนกดสุ่ม)</th>
+                <th class="py-3 px-4 font-semibold">ผู้ที่ถูกจับ (ชื่อที่ออก)</th>
+                <th class="py-3 px-4 font-semibold">รูปแบบที่ใช้</th>
+                <th class="py-3 px-4 font-semibold">เวลา</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y divide-slate-200 text-sm">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Formatted LINE Text Preview -->
+        <div class="bg-slate-900 text-slate-100 rounded-xl p-4 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-emerald-400">ตัวอย่างข้อความที่จะนำไปวางในแชต LINE</span>
+            <span class="text-[11px] text-slate-400">อัปเดตอัตโนมัติตามลำดับ</span>
+          </div>
+          <pre id="lineMessagePreview" class="text-xs text-slate-200 whitespace-pre-wrap font-mono leading-relaxed max-h-48 overflow-y-auto"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 3: ADMIN PANEL (PIN PROTECTED)        -->
+    <!-- ========================================== -->
+    <div id="viewAdmin" class="hidden space-y-6">
+
+      <!-- Admin PIN Lock Screen -->
+      <div id="adminLockScreen" class="max-w-md mx-auto bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 text-center space-y-5 my-4">
+        <div class="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center mx-auto shadow-md">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+          </svg>
+        </div>
+        <div class="space-y-1">
+          <h2 class="text-lg font-bold text-slate-800">เข้าสู่ระบบจัดการแอดมิน (Admin PIN)</h2>
+          <p class="text-xs text-slate-500">กรอกรหัส PIN เพื่อจัดการงวด รายชื่อในสลาก และตั้งค่ากติกา (ค่าเริ่มต้น: <strong class="text-slate-800">1234</strong>)</p>
+        </div>
+        <form id="formAdminLogin" class="space-y-3">
+          <input id="inputAdminPin" type="password" inputmode="numeric" maxlength="8" placeholder="กรอกรหัส PIN (เช่น 1234)" class="w-full text-center tracking-widest text-lg font-bold py-3 px-4 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900" />
+          <button type="submit" class="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm transition shadow-sm">
+            ปลดล็อกหน้าแอดมิน
+          </button>
+        </form>
+      </div>
+
+      <!-- Unlocked Admin Dashboard -->
+      <div id="adminDashboard" class="hidden space-y-6">
+
+        <!-- Top Admin Bar -->
+        <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+            <h2 class="font-bold text-slate-800 text-base sm:text-lg">ระบบจัดการแอดมิน (Admin Management)</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btnOpenChangePinModal" type="button" class="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
+              🔑 เปลี่ยนรหัส PIN
+            </button>
+            <button id="btnLockAdmin" type="button" class="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold hover:bg-rose-100 transition">
+              ล็อกหน้าจอแอดมิน
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- Left Admin Column: Manage Rounds (5 cols) -->
+          <div class="lg:col-span-5 space-y-5">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+              <div class="flex items-center justify-between">
+                <h3 class="font-bold text-slate-800 text-sm sm:text-base">📅 จัดการงวดที่จับสลาก</h3>
+                <button id="btnCreateNewRound" type="button" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition">
+                  + สร้างงวดใหม่
+                </button>
+              </div>
+
+              <div id="adminRoundsList" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- LINE LIFF Integration Config Card -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-7 h-7 rounded-lg bg-line text-white flex items-center justify-center font-bold text-xs">L</span>
+                  <div>
+                    <h3 class="font-bold text-slate-800 text-sm sm:text-base">เชื่อมต่อ LINE LIFF ID จริง</h3>
+                    <p class="text-[11px] text-slate-500">ใช้ดึงชื่อโปรไฟล์อัตโนมัติ และส่ง Flex Message เข้าแชต</p>
+                  </div>
+                </div>
+                <span id="adminLiffSdkStatus" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">ยังไม่ได้ตั้งค่า</span>
+              </div>
+
+              <div class="space-y-2.5">
+                <div>
+                  <label for="inputLiffId" class="block text-xs font-semibold text-slate-700 mb-1">LINE LIFF ID (จาก LINE Developers Console)</label>
+                  <input id="inputLiffId" type="text" placeholder="เช่น 1657000000-AbCdEfGh" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <p class="text-[11px] text-slate-400 mt-1">รองรับการตั้งค่าผ่านช่องนี้ หรือใส่พารามิเตอร์ท้ายลิงก์ <code class="bg-slate-100 px-1 rounded text-slate-700">?liffId=XXXX-XXXX</code></p>
+                </div>
+
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input id="chkAutoSendLineChat" type="checkbox" class="rounded text-emerald-600 focus:ring-emerald-500" />
+                  <span class="text-xs text-slate-700">ส่งข้อความประกาศผลเข้าห้องแชต LINE อัตโนมัติทันทีที่จับสลากเสร็จ (<code class="text-[11px]">liff.sendMessages</code>)</span>
+                </label>
+
+                <div class="flex flex-wrap gap-2 pt-1">
+                  <button id="btnSaveAndInitLiff" type="button" class="flex-1 py-2.5 px-3 rounded-xl bg-line hover-bg-line text-white font-semibold text-xs shadow-sm transition">
+                    🔗 บันทึกและเชื่อมต่อ LIFF ID
+                  </button>
+                  <button id="btnToggleLiffGuide" type="button" class="py-2.5 px-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs transition">
+                    📖 วิธีตั้งค่า LIFF
+                  </button>
+                </div>
+              </div>
+
+              <!-- Collapsible Step-by-Step Setup Guide -->
+              <div id="liffSetupGuideBox" class="hidden bg-slate-50 rounded-xl p-3.5 border border-slate-200 text-xs text-slate-600 space-y-2 leading-relaxed">
+                <p class="font-bold text-slate-800">ขั้นตอนการนำ LIFF ID มาใส่ (ใช้เวลา 2 นาที):</p>
+                <ol class="list-decimal list-inside space-y-1">
+                  <li>ไปที่ <strong>LINE Developers Console</strong> &rarr; เลือก Provider และสร้าง Channel แบบ <strong>LINE Login</strong></li>
+                  <li>ไปที่แท็บ <strong>LIFF</strong> แล้วกด <strong>Add</strong></li>
+                  <li>ตั้งค่า Size เป็น <code class="bg-white px-1 rounded border">Full</code> หรือ <code class="bg-white px-1 rounded border">Tall</code></li>
+                  <li>ติ๊กเลือก Scope: <code class="bg-white px-1 rounded border">profile</code>, <code class="bg-white px-1 rounded border">openid</code> และ <code class="bg-white px-1 rounded border">chat_message.write</code> (สำหรับส่งผลเข้าห้องแชต)</li>
+                  <li>เปิด <strong>Share target picker</strong> เป็น ON เพื่อใช้ฟีเจอร์เลือกแชร์ผลให้เพื่อนหรือกลุ่ม</li>
+                  <li>คัดลอกรหัส <strong>LIFF ID</strong> (รูปแบบ <code class="bg-white px-1 rounded border">1234567890-xxxxxxxx</code>) มาวางในช่องด้านบนแล้วกดบันทึก</li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- PIN Change Inline Box (Hidden by default) -->
+            <div id="boxChangePin" class="hidden bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+              <h4 class="font-bold text-slate-800 text-sm">ตั้งรหัส PIN แอดมินใหม่</h4>
+              <div class="flex gap-2">
+                <input id="inputNewPin" type="text" maxlength="8" placeholder="รหัส PIN ใหม่" class="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <button id="btnSaveNewPin" type="button" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold">บันทึก</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Admin Column: Edit Selected Round Settings & Names (7 cols) -->
+          <div class="lg:col-span-7 space-y-5">
+            <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div>
+                  <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">กำลังแก้ไขงวดที่เลือก</span>
+                  <h3 id="adminEditingRoundHeading" class="font-bold text-slate-800 text-base sm:text-lg">ตั้งค่ารายละเอียดงวด</h3>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button id="btnResetRoundDraws" type="button" class="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-xs font-semibold transition">
+                    🔄 รีเซ็ตผลการจับในงวดนี้
+                  </button>
+                </div>
+              </div>
+
+              <!-- 1. ชื่องวด & รูปแบบอนิเมชัน -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label for="adminRoundTitle" class="block text-xs font-semibold text-slate-700 mb-1">ชื่องวด / รอบการจับสลาก</label>
+                  <input id="adminRoundTitle" type="text" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="เช่น งวดวันที่ 16 พ.ย. 69 / จับรางวัลประจำเดือน" />
+                </div>
+                <div>
+                  <label for="adminRoundMode" class="block text-xs font-semibold text-slate-700 mb-1">รูปแบบการสุ่มประจำงวด</label>
+                  <select id="adminRoundMode" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                    <option value="wheel">🎡 วงล้อเสี่ยงโชค (Spin Wheel)</option>
+                    <option value="cards">🃏 เปิดการ์ดสุ่มชื่อ (Card Flip)</option>
+                    <option value="box">🎁 เปิดกล่องสุ่ม (Mystery Box)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 2. เงื่อนไขการตัดสิทธิ์ (รองรับทั้งโหมดไม่คัดออกสุ่มซ้ำได้ และ โหมดตัดชื่อออกทันที) -->
+              <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
+                <label class="block text-xs font-bold text-slate-700">เงื่อนไขรายชื่อที่ถูกจับและผู้จับในงวดนี้</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <label class="flex items-start gap-2.5 p-3 rounded-xl border bg-white cursor-pointer hover:border-emerald-500 transition">
+                    <input type="radio" name="adminPoolRule" id="radioRuleKeep" value="keep" class="mt-0.5 text-emerald-600 focus:ring-emerald-500" />
+                    <span class="text-xs">
+                      <strong class="block text-slate-800">ไม่คัดชื่อในสลากออก (สุ่มซ้ำได้)</strong>
+                      <span class="text-slate-500">ชื่อที่ถูกจับแล้วยังอยู่ในสลาก โอกาสจับโดนเท่าๆ กันทุกครั้ง</span>
+                    </span>
+                  </label>
+                  <label class="flex items-start gap-2.5 p-3 rounded-xl border bg-white cursor-pointer hover:border-emerald-500 transition">
+                    <input type="radio" name="adminPoolRule" id="radioRuleRemove" value="remove" class="mt-0.5 text-emerald-600 focus:ring-emerald-500" />
+                    <span class="text-xs">
+                      <strong class="block text-slate-800">ตัดชื่อที่ถูกรางวัลออกทันที</strong>
+                      <span class="text-slate-500">เมื่อชื่อในสลากถูกจับแล้ว จะคัดออกจากวงล้อ/การ์ดในงวดนั้นทันที</span>
+                    </span>
+                  </label>
+                </div>
+
+                <label class="flex items-center gap-2 pt-1 cursor-pointer">
+                  <input id="chkLockDrawerOnce" type="checkbox" class="rounded text-emerald-600 focus:ring-emerald-500" />
+                  <span class="text-xs text-slate-700">จำกัดสิทธิ์ให้ <strong>"ผู้ที่เข้ามาจับ (คนกดสุ่ม)"</strong> กดจับได้คนละ 1 ครั้งต่อหนึ่งงวด (ตัดสิทธิ์การกดซ้ำ)</span>
+                </label>
+              </div>
+
+              <!-- 3. นำเข้ารายชื่อในสลาก (บรรทัดละ 1 ชื่อ) -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <label for="adminTextareaNames" class="block text-xs font-bold text-slate-700">
+                    🎯 รายชื่อในสลากที่ต้องสุ่ม (ก๊อปปี้มาวาง หรือพิมพ์บรรทัดละ 1 ชื่อ)
+                  </label>
+                  <span id="adminNamesCountLabel" class="text-xs font-semibold text-emerald-600">0 รายชื่อ</span>
+                </div>
+                <textarea id="adminTextareaNames" rows="6" class="w-full p-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-sans leading-relaxed" placeholder="ก๊อปปี้รายชื่อมาวางที่นี่ บรรทัดละ 1 ชื่อ เช่น&#10;สมชาย ใจดี&#10;สมหญิง รักงาน&#10;กิตติพงศ์ ทองคำ"></textarea>
+                <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+                  <span>ระบบจะตัดบรรทัดว่างให้อัตโนมัติ และทุกบรรทัดมีโอกาสถูกสุ่มเท่ากัน</span>
+                  <button id="btnLoadSampleNames" type="button" class="text-emerald-600 hover:underline font-medium">โหลดรายชื่อตัวอย่าง</button>
+                </div>
+              </div>
+
+              <!-- 4. รายชื่อผู้มีสิทธิ์กดจับ (Optional quick-select list) -->
+              <div class="space-y-2 pt-2 border-t border-slate-100">
+                <div class="flex items-center justify-between">
+                  <label for="adminTextareaDrawers" class="block text-xs font-bold text-slate-700">
+                    🙋 รายชื่อผู้เข้ามาจับสลากล่วงหน้า (ไม่บังคับ — มีปุ่มกดเลือกชื่อตัวเองง่ายๆ หน้าจับสลาก)
+                  </label>
+                </div>
+                <textarea id="adminTextareaDrawers" rows="3" class="w-full p-3 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ใส่ชื่อสมาชิกที่จะเข้ามาจับ บรรทัดละ 1 ชื่อ (หรือปล่อยว่างเพื่อให้พิมพ์ชื่อเองหน้าเว็บได้)"></textarea>
+              </div>
+
+              <!-- Save Button -->
+              <div class="pt-2 flex items-center justify-end gap-3">
+                <button id="btnSaveRoundConfig" type="button" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-line hover-bg-line text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition">
+                  💾 บันทึกการตั้งค่างวดนี้และนำไปใช้งาน
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- WINNER ANNOUNCEMENT MODAL                  -->
+  <!-- ========================================== -->
+  <div id="winnerModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 text-center space-y-5 animate-pop relative overflow-hidden">
+      <div class="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-emerald-400 via-teal-500 to-amber-400"></div>
+
+      <div class="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-3xl shadow-inner">
+        🎉
+      </div>
+
+      <div class="space-y-1">
+        <span id="modalOrderBadge" class="inline-block px-3 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+          ลำดับการจับที่ #1
+        </span>
+        <p class="text-xs text-slate-500 pt-1">ผู้ทำการจับสลาก: <strong id="modalDrawerName" class="text-slate-800">-</strong></p>
+      </div>
+
+      <div class="bg-gradient-to-b from-slate-50 to-emerald-50/50 rounded-2xl p-5 border border-emerald-200/80 space-y-1">
+        <p class="text-xs font-medium text-emerald-700">จับได้รายชื่อผู้โชคดีคือ</p>
+        <h3 id="modalWinnerName" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight break-words">
+          -
+        </h3>
+      </div>
+
+      <p id="modalRuleNote" class="text-[11px] text-slate-500"></p>
+
+      <div class="flex flex-col gap-2 pt-1">
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button id="btnModalNativeLineShare" type="button" class="flex-1 py-3 px-4 rounded-xl bg-line hover-bg-line text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 5.92 2 10.75c0 4.32 3.58 7.95 8.44 8.63.33.07.77.22.89.51.1.26.07.66.03.92l-.14.87c-.04.26-.2 1.02.89.56 1.09-.46 5.89-3.47 8.04-5.94C21.6 14.54 22 12.72 22 10.75 22 5.92 17.52 2 12 2z"/></svg>
+            <span id="lblModalNativeShare">ส่งการ์ดผลเข้าแชต LINE</span>
+          </button>
+          <button id="btnModalShareLine" type="button" class="py-3 px-4 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1">
+            <span>คัดลอกผลส่งใน LINE</span>
+          </button>
+        </div>
+        <button id="btnModalClose" type="button" class="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm transition">
+          ตกลง / จับคนถัดไป
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====================================================
+    // STATE & STORAGE MANAGEMENT
+    // ====================================================
+    const STORAGE_KEY = 'LINE_LIFF_LUCKY_DRAW_V1';
+
+    const DEFAULT_STATE = {
+      adminPin: '1234',
+      adminUnlocked: false,
+      soundEnabled: true,
+      liffId: '',
+      autoSendLineChat: true,
+      activeRoundId: 'round_1',
+      rounds: [
+        {
+          id: 'round_1',
+          title: 'งวดที่ 1 — จับสลากผู้โชคดีประจำสัปดาห์',
+          mode: 'wheel', // 'wheel' | 'cards' | 'box'
+          poolRule: 'keep', // 'keep' = ไม่คัดชื่อในสลากออก (สุ่มซ้ำได้ โอกาสเท่ากัน), 'remove' = ตัดชื่อที่ออกแล้วทันที
+          lockDrawerOnce: true, // ผู้จับที่กดรับรางวัลในงวดนั้นแล้ว ตัดสิทธิ์กดซ้ำ
+          candidates: [
+            'คุณสมชาย (ฝ่ายขาย)',
+            'คุณวิภาดา (การตลาด)',
+            'คุณกิตติพงศ์ (ไอที)',
+            'คุณนภัสสร (บัญชี)',
+            'คุณธนกร (คลังสินค้า)',
+            'คุณพิมพ์ชนก (HR)',
+            'คุณอานนท์ (ออกแบบ)',
+            'คุณชุติมา (บริการลูกค้า)'
+          ],
+          registeredDrawers: [
+            'สมชาย',
+            'วิภาดา',
+            'กิตติพงศ์',
+            'นภัสสร',
+            'ธนกร',
+            'พิมพ์ชนก',
+            'อานนท์',
+            'ชุติมา'
+          ],
+          draws: [
+            {
+              order: 1,
+              drawer: 'สมชาย',
+              picked: 'คุณนภัสสร (บัญชี)',
+              mode: 'wheel',
+              timestamp: '13:30:15'
+            }
+          ]
+        },
+        {
+          id: 'round_2',
+          title: 'งวดที่ 2 — เปิดการ์ดลุ้นรางวัลพิเศษ',
+          mode: 'cards',
+          poolRule: 'remove',
+          lockDrawerOnce: true,
+          candidates: [
+            'รางวัลทองคำ 1 สลึง (คุณเอก)',
+            'บัตรกำนัลห้าง 2,000฿ (คุณโบว์)',
+            'หูฟังไร้สาย (คุณเจมส์)',
+            'แก้วเก็บความเย็น (คุณเมย์)',
+            'พาวเวอร์แบงค์ (คุณนนท์)',
+            'คูปองกาแฟ 500฿ (คุณฟ้า)'
+          ],
+          registeredDrawers: [
+            'คุณเอก', 'คุณโบว์', 'คุณเจมส์', 'คุณเมย์', 'คุณนนท์', 'คุณฟ้า'
+          ],
+          draws: []
+        }
+      ]
+    };
+
+    let state = loadState();
+    let isAnimating = false;
+    let wheelRotation = 0;
+    let shuffledCardOrder = [];
+
+    // ====================================================
+    // REAL LINE LIFF SDK INTEGRATION
+    // ====================================================
+    let liffRuntime = {
+      initialized: false,
+      loggedIn: false,
+      inClient: false,
+      profile: null, // { userId, displayName, pictureUrl, statusMessage }
+      error: null
+    };
+
+    function getEffectiveLiffId() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const fromUrl = params.get('liffId') || params.get('liff_id');
+        if (fromUrl && fromUrl.trim()) {
+          state.liffId = fromUrl.trim();
+          saveState();
+          return state.liffId;
+        }
+      } catch (e) {}
+      return (state.liffId || '').trim();
+    }
+
+    async function initLineLiff(customLiffId) {
+      const targetId = (customLiffId !== undefined ? customLiffId : getEffectiveLiffId()).trim();
+      updateLiffStatusUI('connecting', targetId);
+
+      if (!targetId) {
+        liffRuntime.initialized = false;
+        liffRuntime.loggedIn = false;
+        liffRuntime.profile = null;
+        updateLiffStatusUI('unconfigured', '');
+        return;
+      }
+
+      if (typeof window.liff === 'undefined') {
+        liffRuntime.error = 'ไม่พบไลบรารี LINE LIFF SDK';
+        updateLiffStatusUI('error', targetId);
+        return;
+      }
+
+      try {
+        await window.liff.init({ liffId: targetId });
+        liffRuntime.initialized = true;
+        liffRuntime.inClient = window.liff.isInClient();
+        liffRuntime.loggedIn = window.liff.isLoggedIn();
+        liffRuntime.error = null;
+
+        if (liffRuntime.loggedIn) {
+          const profile = await window.liff.getProfile();
+          liffRuntime.profile = profile;
+          // Auto-fill drawer name with real LINE displayName if input is empty
+          const drawerInput = document.getElementById('inputDrawerName');
+          if (drawerInput && !drawerInput.value.trim() && profile && profile.displayName) {
+            drawerInput.value = profile.displayName;
+          }
+          updateLiffStatusUI('connected', targetId);
+          showToast(`เชื่อมต่อ LINE LIFF สำเร็จ: สวัสดีคุณ ${profile.displayName}`);
+        } else {
+          updateLiffStatusUI('ready_not_logged_in', targetId);
+        }
+      } catch (err) {
+        liffRuntime.initialized = false;
+        liffRuntime.error = err && err.message ? err.message : 'LIFF Init Failed';
+        updateLiffStatusUI('error', targetId);
+        showToast(`เชื่อมต่อ LIFF ID ไม่สำเร็จ: ${liffRuntime.error}`, 'error');
+      }
+    }
+
+    function updateLiffStatusUI(status, liffIdStr) {
+      const badge = document.getElementById('liffStatusBadge');
+      const dot = document.getElementById('liffStatusDot');
+      const text = document.getElementById('liffStatusText');
+      const adminStatus = document.getElementById('adminLiffSdkStatus');
+      const loginBtn = document.getElementById('btnLiffLogin');
+      const profileBanner = document.getElementById('liffProfileBanner');
+      const lblFetch = document.getElementById('lblFetchLineBtn');
+
+      if (!badge) return;
+
+      if (status === 'connected' && liffRuntime.profile) {
+        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse';
+        text.textContent = `LIFF: ${liffRuntime.profile.displayName}`;
+        if (adminStatus) {
+          adminStatus.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200';
+          adminStatus.textContent = 'เชื่อมต่อแล้ว ✓';
+        }
+        if (loginBtn) loginBtn.classList.add('hidden');
+        if (lblFetch) lblFetch.textContent = 'ดึงชื่อจาก LINE';
+
+        if (profileBanner) {
+          profileBanner.classList.remove('hidden');
+          profileBanner.classList.add('flex');
+          document.getElementById('liffDisplayName').textContent = liffRuntime.profile.displayName;
+          document.getElementById('liffEnvTag').textContent = liffRuntime.inClient ? 'LINE In-App' : 'External Browser';
+          document.getElementById('liffStatusMessage').textContent = liffRuntime.profile.statusMessage || `LIFF ID: ${liffIdStr}`;
+          if (liffRuntime.profile.pictureUrl) {
+            document.getElementById('liffAvatarImg').src = liffRuntime.profile.pictureUrl;
+          }
+        }
+      } else if (status === 'ready_not_logged_in') {
+        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-300';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500';
+        text.textContent = 'LIFF พร้อม (รอ Login)';
+        if (adminStatus) {
+          adminStatus.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700';
+          adminStatus.textContent = 'พร้อมใช้งาน (ยังไม่ล็อกอิน)';
+        }
+        if (loginBtn) loginBtn.classList.remove('hidden');
+        if (profileBanner) {
+          profileBanner.classList.add('hidden');
+          profileBanner.classList.remove('flex');
+        }
+      } else if (status === 'error') {
+        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-700 border border-rose-200';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+        text.textContent = 'LIFF Error';
+        if (adminStatus) {
+          adminStatus.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-700';
+          adminStatus.textContent = 'รหัส LIFF ID ไม่ถูกต้อง';
+        }
+        if (loginBtn) loginBtn.classList.add('hidden');
+      } else {
+        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-slate-400';
+        text.textContent = 'LINE LIFF (โหมดจำลอง)';
+        if (adminStatus) {
+          adminStatus.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600';
+          adminStatus.textContent = 'โหมดจำลอง (ใส่ LIFF ID เพื่อเชื่อมจริง)';
+        }
+        if (loginBtn) loginBtn.classList.add('hidden');
+        if (profileBanner) {
+          profileBanner.classList.add('hidden');
+          profileBanner.classList.remove('flex');
+        }
+      }
+    }
+
+    function buildSingleDrawFlexMessage(drawRecord, round) {
+      return {
+        type: 'flex',
+        altText: `🎉 ผลจับสลากลำดับที่ #${drawRecord.order}: ${drawRecord.drawer} จับได้ ${drawRecord.picked}`,
+        contents: {
+          type: 'bubble',
+          header: {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#06C755',
+            paddingAll: '16px',
+            contents: [
+              {
+                type: 'text',
+                text: 'LUCKY DRAW RESULT',
+                color: '#E6F9EE',
+                size: 'xxs',
+                weight: 'bold'
+              },
+              {
+                type: 'text',
+                text: round.title,
+                color: '#FFFFFF',
+                size: 'md',
+                weight: 'bold',
+                wrap: true
+              }
+            ]
+          },
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'md',
+            paddingAll: '18px',
+            contents: [
+              {
+                type: 'box',
+                layout: 'horizontal',
+                contents: [
+                  {
+                    type: 'text',
+                    text: `ลำดับการจับที่ #${drawRecord.order}`,
+                    size: 'xs',
+                    weight: 'bold',
+                    color: '#D97706'
+                  },
+                  {
+                    type: 'text',
+                    text: drawRecord.timestamp,
+                    size: 'xs',
+                    color: '#94A3B8',
+                    align: 'end'
+                  }
+                ]
+              },
+              {
+                type: 'separator'
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                spacing: 'xs',
+                contents: [
+                  {
+                    type: 'text',
+                    text: '🙋 ผู้ที่จับสลาก',
+                    size: 'xs',
+                    color: '#64748B'
+                  },
+                  {
+                    type: 'text',
+                    text: drawRecord.drawer,
+                    size: 'md',
+                    weight: 'bold',
+                    color: '#1E293B',
+                    wrap: true
+                  }
+                ]
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                spacing: 'xs',
+                backgroundColor: '#F0FDF4',
+                cornerRadius: '12px',
+                paddingAll: '12px',
+                contents: [
+                  {
+                    type: 'text',
+                    text: '🎯 จับได้รายชื่อผู้โชคดี',
+                    size: 'xs',
+                    color: '#15803D',
+                    weight: 'bold'
+                  },
+                  {
+                    type: 'text',
+                    text: drawRecord.picked,
+                    size: 'lg',
+                    weight: 'bold',
+                    color: '#065F46',
+                    wrap: true
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      };
+    }
+
+    function buildSummaryFlexMessage(round) {
+      const rows = round.draws.slice(-15).map(d => ({
+        type: 'box',
+        layout: 'horizontal',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'text',
+            text: `#${d.order}`,
+            size: 'xs',
+            weight: 'bold',
+            color: '#06C755',
+            flex: 1
+          },
+          {
+            type: 'text',
+            text: `${d.drawer} ➔ ${d.picked}`,
+            size: 'xs',
+            color: '#1E293B',
+            wrap: true,
+            flex: 6
+          }
+        ]
+      }));
+
+      if (rows.length === 0) {
+        rows.push({
+          type: 'text',
+          text: 'ยังไม่มีรายการจับสลากในงวดนี้',
+          size: 'xs',
+          color: '#94A3B8'
+        });
+      }
+
+      return {
+        type: 'flex',
+        altText: `📋 สรุปผลสลากเรียงลำดับ: ${round.title}`,
+        contents: {
+          type: 'bubble',
+          header: {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#0F172A',
+            paddingAll: '16px',
+            contents: [
+              {
+                type: 'text',
+                text: '📋 สรุปลำดับผู้ที่จับ & ผู้ที่ถูกจับ',
+                color: '#34D399',
+                size: 'xs',
+                weight: 'bold'
+              },
+              {
+                type: 'text',
+                text: round.title,
+                color: '#FFFFFF',
+                size: 'md',
+                weight: 'bold',
+                wrap: true
+              }
+            ]
+          },
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            paddingAll: '16px',
+            contents: rows
+          }
+        }
+      };
+    }
+
+    async function shareOrSendViaLiff(flexMessage, fallbackPlainText, isAutoTrigger = false) {
+      // 1. If initialized and inside LINE chat room, try sendMessages or shareTargetPicker
+      if (liffRuntime.initialized && typeof window.liff !== 'undefined') {
+        try {
+          if ( !isAutoTrigger && window.liff.isApiAvailable('shareTargetPicker') ) {
+            const res = await window.liff.shareTargetPicker([flexMessage]);
+            if (res) {
+              showToast('แชร์การ์ดผลสลากเข้าแชต LINE สำเร็จ!');
+            }
+            return true;
+          }
+          if (liffRuntime.inClient) {
+            await window.liff.sendMessages([flexMessage]);
+            showToast('ส่งการ์ดประกาศผลเข้าห้องแชต LINE เรียบร้อยแล้ว!');
+            return true;
+          }
+        } catch (err) {
+          if (!isAutoTrigger) {
+            copyTextToClipboard(fallbackPlainText, 'คัดลอกข้อความสำหรับส่ง LINE แล้ว (เนื่องจากไม่ได้เปิดในห้องแชตโดยตรง)');
+          }
+          return false;
+        }
+      }
+
+      if (!isAutoTrigger) {
+        copyTextToClipboard(fallbackPlainText, 'คัดลอกข้อความประกาศผลแล้ว! (ตั้งค่า LIFF ID ในหน้าแอดมินเพื่อส่งการ์ด Flex อัตโนมัติ)');
+      }
+      return false;
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.rounds) && parsed.rounds.length > 0) {
+            return parsed;
+          }
+        }
+      } catch (e) {
+        // Ignore storage error in restricted iframe
+      }
+      return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        // Ignore storage error
+      }
+    }
+
+    function getActiveRound() {
+      let r = state.rounds.find(item => item.id === state.activeRoundId);
+      if (!r) {
+        r = state.rounds[0];
+        state.activeRoundId = r.id;
+      }
+      return r;
+    }
+
+    // Returns available pool names based on the round's rule
+    function getAvailableCandidates(round) {
+      if (!round) return [];
+      if (round.poolRule === 'remove') {
+        const pickedSet = new Set(round.draws.map(d => d.picked));
+        return round.candidates.filter(name => !pickedSet.has(name));
+      }
+      // Default 'keep': ชื่อที่ถูกจับแล้วจะไม่คัดออก สามารถจับได้ซ้ำ โอกาสเท่าๆ กัน
+      return [...round.candidates];
+    }
+
+    // ====================================================
+    // WEB AUDIO SYNTHESIZER (NO EXTERNAL FILES NEEDED)
+    // ====================================================
+    let audioCtx = null;
+    function getAudioCtx() {
+      if (!state.soundEnabled) return null;
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playTickSound(freq = 580) {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.045);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.05);
+      } catch (e) {}
+    }
+
+    function playWinFanfare() {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      try {
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((note, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          const startTime = ctx.currentTime + idx * 0.09;
+          osc.frequency.setValueAtTime(note, startTime);
+          gain.gain.setValueAtTime(0.14, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + 0.36);
+        });
+      } catch (e) {}
+    }
+
+    // ====================================================
+    // TOAST & CLIPBOARD HELPERS
+    // ====================================================
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      const bgClass = type === 'error'
+        ? 'bg-rose-600 text-white'
+        : type === 'warning'
+        ? 'bg-amber-500 text-white'
+        : 'bg-slate-900 text-white border border-emerald-500/40';
+      el.className = `${bgClass} px-4 py-3 rounded-2xl shadow-lg text-xs sm:text-sm font-medium flex items-center justify-between gap-2 animate-pop pointer-events-auto`;
+      el.innerHTML = `<span>${message}</span>`;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.25s ease';
+        setTimeout(() => el.remove(), 260);
+      }, 2800);
+    }
+
+    function copyTextToClipboard(text, successMsg) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast(successMsg);
+        }).catch(() => fallbackCopy(text, successMsg));
+      } else {
+        fallbackCopy(text, successMsg);
+      }
+    }
+
+    function fallbackCopy(text, successMsg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg);
+      } catch (e) {
+        showToast('ไม่สามารถคัดลอกอัตโนมัติได้ กรุณาคัดลอกจากกล่องข้อความ', 'warning');
+      }
+      document.body.removeChild(ta);
+    }
+
+    // ====================================================
+    // CONFETTI EFFECT
+    // ====================================================
+    const confettiCanvas = document.getElementById('confettiCanvas');
+    const confettiCtx = confettiCanvas.getContext('2d');
+    let confettiParticles = [];
+    let confettiAnimId = null;
+
+    function launchConfetti() {
+      confettiCanvas.width = window.innerWidth;
+      confettiCanvas.height = window.innerHeight;
+      const colors = ['#06C755', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6'];
+      confettiParticles = Array.from({ length: 80 }, () => ({
+        x: window.innerWidth / 2 + (Math.random() - 0.5) * 180,
+        y: window.innerHeight / 2 - 40,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -Math.random() * 12 - 4,
+        size: Math.random() * 7 + 5,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rot: Math.random() * 360,
+        vRot: (Math.random() - 0.5) * 12
+      }));
+      if (confettiAnimId) cancelAnimationFrame(confettiAnimId);
+      stepConfetti();
+    }
+
+    function stepConfetti() {
+      confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+      let active = false;
+      confettiParticles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.35;
+        p.rot += p.vRot;
+        if (p.y < confettiCanvas.height + 20) active = true;
+        confettiCtx.save();
+        confettiCtx.translate(p.x, p.y);
+        confettiCtx.rotate((p.rot * Math.PI) / 180);
+        confettiCtx.fillStyle = p.color;
+        confettiCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
+        confettiCtx.restore();
+      });
+      if (active) {
+        confettiAnimId = requestAnimationFrame(stepConfetti);
+      } else {
+        confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+      }
+    }
+
+    // ====================================================
+    // SPIN WHEEL RENDERING & ANIMATION
+    // ====================================================
+    const WHEEL_PALETTE = [
+      '#06C755', '#0ea5e9', '#f59e0b', '#8b5cf6',
+      '#ec4899', '#14b8a6', '#f97316', '#6366f1'
+    ];
+
+    function drawWheel(candidates, rotationAngleRad = 0) {
+      const canvas = document.getElementById('wheelCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;
+      const height = canvas.height;
+      const cx = width / 2;
+      const cy = height / 2;
+      const radius = Math.min(cx, cy) - 8;
+
+      ctx.clearRect(0, 0, width, height);
+
+      if (!candidates || candidates.length === 0) {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.fill();
+        return;
+      }
+
+      const n = candidates.length;
+      const arc = (Math.PI * 2) / n;
+
+      for (let i = 0; i < n; i++) {
+        const startAngle = rotationAngleRad + i * arc;
+        const endAngle = startAngle + arc;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = WHEEL_PALETTE[i % WHEEL_PALETTE.length];
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        // Draw slice label
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(startAngle + arc / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = n > 12 ? '600 11px Prompt, sans-serif' : '600 13px Prompt, sans-serif';
+        const label = candidates[i].length > 16 ? candidates[i].slice(0, 15) + '…' : candidates[i];
+        ctx.fillText(label, radius - 16, 4);
+        ctx.restore();
+      }
+    }
+
+    // ====================================================
+    // VALIDATION & DRAW EXECUTION
+    // ====================================================
+    function validateDrawerBeforeDraw() {
+      const round = getActiveRound();
+      const available = getAvailableCandidates(round);
+      if (available.length === 0) {
+        showToast('ไม่มีรายชื่อคงเหลือในสลากแล้ว กรุณาตรวจสอบที่หน้าแอดมิน', 'error');
+        return null;
+      }
+
+      const inputEl = document.getElementById('inputDrawerName');
+      const drawerName = inputEl.value.trim();
+      if (!drawerName) {
+        inputEl.focus();
+        showToast('กรุณาลงชื่อผู้จับสลากในช่องขั้นตอนที่ 1 ก่อนกดสุ่มครับ', 'warning');
+        return null;
+      }
+
+      if (round.lockDrawerOnce) {
+        const alreadyDrew = round.draws.some(
+          d => d.drawer.toLowerCase() === drawerName.toLowerCase()
+        );
+        if (alreadyDrew) {
+          showToast(`คุณ "${drawerName}" ได้ใช้สิทธิ์จับสลากในงวดนี้ไปแล้ว (จำกัด 1 ครั้ง/งวด)`, 'error');
+          return null;
+        }
+      }
+
+      return { round, available, drawerName };
+    }
+
+    function recordDrawResult(round, drawerName, pickedName, usedMode) {
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+      const newOrder = round.draws.length + 1;
+
+      const drawRecord = {
+        order: newOrder,
+        drawer: drawerName,
+        picked: pickedName,
+        mode: usedMode,
+        timestamp: timeStr
+      };
+
+      round.draws.push(drawRecord);
+      saveState();
+
+      playWinFanfare();
+      launchConfetti();
+      openWinnerModal(drawRecord, round);
+      renderAll();
+
+      // Auto-send Flex Message to LINE chat if running inside LINE client and enabled
+      if (state.autoSendLineChat && liffRuntime.initialized && liffRuntime.inClient) {
+        const flexMsg = buildSingleDrawFlexMessage(drawRecord, round);
+        const plainMsg = `🎉 ผลจับสลาก (${round.title}) ลำดับที่ #${drawRecord.order}: ผู้จับ "${drawRecord.drawer}" จับได้ "${drawRecord.picked}"`;
+        shareOrSendViaLiff(flexMsg, plainMsg, true);
+      }
+    }
+
+    // Spin Wheel Trigger
+    function handleSpinWheel() {
+      if (isAnimating) return;
+      const check = validateDrawerBeforeDraw();
+      if (!check) return;
+      const { round, available, drawerName } = check;
+
+      isAnimating = true;
+      const n = available.length;
+      // Equal probability selection
+      const winningIndex = Math.floor(Math.random() * n);
+      const pickedName = available[winningIndex];
+
+      // Pointer is at the top (-Math.PI / 2 or 3 * Math.PI / 2)
+      const arc = (Math.PI * 2) / n;
+      const sliceCenterAngle = winningIndex * arc + arc / 2;
+      const pointerAngle = (3 * Math.PI) / 2;
+
+      const extraSpins = (5 + Math.floor(Math.random() * 3)) * Math.PI * 2;
+      const currentNormalized = wheelRotation % (Math.PI * 2);
+      let targetDelta = pointerAngle - sliceCenterAngle - currentNormalized;
+      while (targetDelta < 0) targetDelta += Math.PI * 2;
+
+      const startRot = wheelRotation;
+      const totalRot = extraSpins + targetDelta;
+      const duration = 3400;
+      const startTime = performance.now();
+      let lastTickSlice = -1;
+
+      function animateWheel(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Cubic ease out
+        const eased = 1 - Math.pow(1 - progress, 3);
+        wheelRotation = startRot + totalRot * eased;
+
+        const currentSlice = Math.floor(((wheelRotation % (Math.PI * 2)) / arc)) % n;
+        if (currentSlice !== lastTickSlice && progress < 0.97) {
+          lastTickSlice = currentSlice;
+          playTickSound(520 + (progress * 200));
+        }
+
+        drawWheel(available, wheelRotation);
+
+        if (progress < 1) {
+          requestAnimationFrame(animateWheel);
+        } else {
+          isAnimating = false;
+          recordDrawResult(round, drawerName, pickedName, 'wheel');
+        }
+      }
+
+      requestAnimationFrame(animateWheel);
+    }
+
+    // Card Flip Trigger
+    function shuffleCardsDeck() {
+      const round = getActiveRound();
+      const available = getAvailableCandidates(round);
+      shuffledCardOrder = [...available];
+      // Fisher-Yates Equal Probability Shuffle
+      for (let i = shuffledCardOrder.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledCardOrder[i], shuffledCardOrder[j]] = [shuffledCardOrder[j], shuffledCardOrder[i]];
+      }
+      renderCardsGrid();
+    }
+
+    function renderCardsGrid() {
+      const grid = document.getElementById('cardsGrid');
+      if (!grid) return;
+      const round = getActiveRound();
+      const available = getAvailableCandidates(round);
+
+      if (shuffledCardOrder.length !== available.length) {
+        shuffledCardOrder = [...available];
+        for (let i = shuffledCardOrder.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledCardOrder[i], shuffledCardOrder[j]] = [shuffledCardOrder[j], shuffledCardOrder[i]];
+        }
+      }
+
+      grid.innerHTML = '';
+      shuffledCardOrder.forEach((candidateName, idx) => {
+        const cardBtn = document.createElement('div');
+        cardBtn.className = 'perspective-1000 h-28 cursor-pointer select-none group';
+        cardBtn.innerHTML = `
+          <div class="card-inner relative w-full h-full transform-style-3d rounded-2xl shadow-sm border border-slate-200">
+            <!-- Card Back (Unflipped) -->
+            <div class="absolute inset-0 backface-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-slate-900 to-emerald-950 text-white p-3 flex flex-col items-center justify-center border-2 border-emerald-400/40 group-hover:border-emerald-400 transition">
+              <span class="text-2xl mb-1">🃏</span>
+              <span class="text-xs font-bold tracking-wide text-emerald-300">การ์ดใบที่ #${idx + 1}</span>
+              <span class="text-[10px] text-slate-300 mt-0.5">คลิกเพื่อเปิดชื่อ</span>
+            </div>
+            <!-- Card Front (Revealed) -->
+            <div class="absolute inset-0 backface-hidden rotate-y-180 rounded-2xl bg-emerald-50 border-2 border-emerald-500 p-3 flex flex-col items-center justify-center text-center">
+              <span class="text-[10px] font-bold uppercase text-emerald-600">ผู้ที่ถูกจับ</span>
+              <p class="font-bold text-slate-900 text-xs sm:text-sm line-clamp-2 mt-0.5">${escapeHtml(candidateName)}</p>
+            </div>
+          </div>
+        `;
+        cardBtn.addEventListener('click', () => handleFlipCard(cardBtn, candidateName));
+        grid.appendChild(cardBtn);
+      });
+    }
+
+    function handleFlipCard(cardElement, pickedName) {
+      if (isAnimating) return;
+      const check = validateDrawerBeforeDraw();
+      if (!check) return;
+      const { round, drawerName } = check;
+
+      isAnimating = true;
+      playTickSound(680);
+      cardElement.classList.add('card-flipped');
+
+      setTimeout(() => {
+        isAnimating = false;
+        // Re-shuffle for next drawer so nobody knows card positions when poolRule='keep'
+        shuffledCardOrder = [];
+        recordDrawResult(round, drawerName, pickedName, 'cards');
+      }, 750);
+    }
+
+    // Mystery Box Trigger
+    function handleOpenMysteryBox() {
+      if (isAnimating) return;
+      const check = validateDrawerBeforeDraw();
+      if (!check) return;
+      const { round, available, drawerName } = check;
+
+      isAnimating = true;
+      const boxEl = document.getElementById('mysteryBoxVisual');
+      boxEl.classList.add('animate-shake');
+
+      let ticks = 0;
+      const tickTimer = setInterval(() => {
+        playTickSound(480 + ticks * 45);
+        ticks++;
+      }, 140);
+
+      setTimeout(() => {
+        clearInterval(tickTimer);
+        boxEl.classList.remove('animate-shake');
+        isAnimating = false;
+        // Equal probability random pick
+        const winningIndex = Math.floor(Math.random() * available.length);
+        const pickedName = available[winningIndex];
+        recordDrawResult(round, drawerName, pickedName, 'box');
+      }, 950);
+    }
+
+    // ====================================================
+    // MODAL & LINE MESSAGE FORMATTER
+    // ====================================================
+    let lastModalDraw = null;
+
+    function openWinnerModal(drawRecord, round) {
+      lastModalDraw = { drawRecord, round };
+      document.getElementById('modalOrderBadge').textContent = `ลำดับการจับที่ #${drawRecord.order}`;
+      document.getElementById('modalDrawerName').textContent = drawRecord.drawer;
+      document.getElementById('modalWinnerName').textContent = drawRecord.picked;
+
+      const ruleNote = round.poolRule === 'keep'
+        ? 'กติกางวดนี้: ชื่อที่ถูกจับจะไม่ถูกคัดออก (คนถัดไปมีโอกาสจับโดนชื่อนี้ซ้ำได้เท่าๆ กัน)'
+        : 'กติกางวดนี้: ตัดชื่อที่ถูกจับออกจากสลากเรียบร้อยแล้ว';
+      document.getElementById('modalRuleNote').textContent = ruleNote;
+
+      // Clear drawer input if lockDrawerOnce is enabled so next user can type their name
+      if (round.lockDrawerOnce) {
+        document.getElementById('inputDrawerName').value = '';
+      }
+
+      const modal = document.getElementById('winnerModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeWinnerModal() {
+      const modal = document.getElementById('winnerModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function buildLineAnnouncementText(round) {
+      const lines = [];
+      lines.push(`🎉 ประกาศผลสลาก: ${round.title}`);
+      lines.push(`กติกา: ${round.poolRule === 'keep' ? 'ชื่อในสลากไม่คัดออก (สุ่มซ้ำได้ โอกาสเท่ากัน)' : 'ตัดชื่อที่ออกแล้วทันที'}`);
+      lines.push(`━━━━━━━━━━━━━━`);
+      if (round.draws.length === 0) {
+        lines.push(`(ยังไม่มีรายการจับสลากในงวดนี้)`);
+      } else {
+        round.draws.forEach(d => {
+          lines.push(`ลำดับที่ ${d.order}: 🙋 ผู้จับ "${d.drawer}" ➡️ จับได้ 🎯 "${d.picked}" (${d.timestamp})`);
+        });
+      }
+      lines.push(`━━━━━━━━━━━━━━`);
+      lines.push(`รวมจับแล้วทั้งหมด: ${round.draws.length} ลำดับ`);
+      return lines.join('\n');
+    }
+
+    // ====================================================
+    // UI RENDERING
+    // ====================================================
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function modeLabel(mode) {
+      if (mode === 'cards') return '🃏 เปิดการ์ด';
+      if (mode === 'box') return '🎁 กล่องสุ่ม';
+      return '🎡 วงล้อเสี่ยงโชค';
+    }
+
+    function renderAll() {
+      const round = getActiveRound();
+      const available = getAvailableCandidates(round);
+
+      // Header & Banner
+      document.getElementById('headerRoundTitle').textContent = round.title;
+      document.getElementById('bannerRoundName').textContent = round.title;
+      document.getElementById('bannerModeBadge').textContent = `รูปแบบ: ${modeLabel(round.mode)}`;
+      document.getElementById('bannerRuleBadge').textContent = round.poolRule === 'keep'
+        ? 'กติกา: สุ่มซ้ำได้ (โอกาสเท่ากันทุกชื่อ)'
+        : 'กติกา: ตัดชื่อที่ออกแล้วทันที';
+
+      document.getElementById('statPoolCount').textContent = available.length;
+      document.getElementById('statDrawnCount').textContent = round.draws.length;
+      document.getElementById('badgeHistoryCount').textContent = round.draws.length;
+      document.getElementById('wheelProbCount').textContent = available.length;
+
+      // Active Round Select Dropdown
+      const selectEl = document.getElementById('selectActiveRound');
+      selectEl.innerHTML = state.rounds.map(r =>
+        `<option value="${r.id}" ${r.id === round.id ? 'selected' : ''}>${escapeHtml(r.title)}</option>`
+      ).join('');
+
+      // Sound Icon
+      document.getElementById('iconSoundOn').classList.toggle('hidden', !state.soundEnabled);
+      document.getElementById('iconSoundOff').classList.toggle('hidden', state.soundEnabled);
+
+      // Quick Drawer Chips
+      const chipsWrap = document.getElementById('quickDrawerChipsWrap');
+      const chipsBox = document.getElementById('quickDrawerChips');
+      if (round.registeredDrawers && round.registeredDrawers.length > 0) {
+        chipsWrap.classList.remove('hidden');
+        const alreadyDrewSet = new Set(round.draws.map(d => d.drawer.toLowerCase()));
+        chipsBox.innerHTML = round.registeredDrawers.map(dName => {
+          const used = round.lockDrawerOnce && alreadyDrewSet.has(dName.toLowerCase());
+          if (used) {
+            return `<span class="px-2.5 py-1 rounded-lg text-xs bg-slate-100 text-slate-400 line-through border border-slate-200 select-none" title="จับไปแล้วในงวดนี้">${escapeHtml(dName)} ✓</span>`;
+          }
+          return `<button type="button" data-drawer-chip="${escapeHtml(dName)}" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition">${escapeHtml(dName)}</button>`;
+        }).join('');
+      } else {
+        chipsWrap.classList.add('hidden');
+      }
+
+      // Format Switcher Active Styling
+      const modes = [
+        { id: 'modeSwitchWheel', key: 'wheel' },
+        { id: 'modeSwitchCards', key: 'cards' },
+        { id: 'modeSwitchBox', key: 'box' }
+      ];
+      modes.forEach(m => {
+        const btn = document.getElementById(m.id);
+        if (round.mode === m.key) {
+          btn.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 bg-white text-emerald-700 shadow-sm';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 text-slate-600 hover:text-slate-900';
+        }
+      });
+
+      // Stage Visibility
+      const hasCandidates = available.length > 0;
+      document.getElementById('emptyPoolNotice').classList.toggle('hidden', hasCandidates);
+      document.getElementById('stageWheel').classList.toggle('hidden', !hasCandidates || round.mode !== 'wheel');
+      document.getElementById('stageCards').classList.toggle('hidden', !hasCandidates || round.mode !== 'cards');
+      document.getElementById('stageBox').classList.toggle('hidden', !hasCandidates || round.mode !== 'box');
+
+      if (hasCandidates) {
+        if (round.mode === 'wheel') {
+          drawWheel(available, wheelRotation);
+        } else if (round.mode === 'cards') {
+          renderCardsGrid();
+        }
+      }
+
+      // Live Results Feed (Newest on top, showing exact sequence number)
+      const liveList = document.getElementById('liveResultsList');
+      if (round.draws.length === 0) {
+        liveList.innerHTML = `
+          <div class="text-center py-8 text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
+            ยังไม่มีการจับสลากในงวดนี้<br>ใส่ชื่อผู้จับด้านซ้ายแล้วกดสุ่มได้เลย!
+          </div>
+        `;
+      } else {
+        const reversed = [...round.draws].reverse();
+        liveList.innerHTML = reversed.map(d => `
+          <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-7 h-7 rounded-lg bg-slate-900 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                #${d.order}
+              </span>
+              <div class="min-w-0">
+                <p class="text-xs text-slate-500 truncate">ผู้จับ: <strong class="text-slate-800">${escapeHtml(d.drawer)}</strong></p>
+                <p class="text-sm font-bold text-emerald-700 truncate">🎯 จับได้: ${escapeHtml(d.picked)}</p>
+              </div>
+            </div>
+            <span class="text-[11px] text-slate-400 shrink-0">${d.timestamp}</span>
+          </div>
+        `).join('');
+      }
+
+      // Pool Chips Container
+      document.getElementById('poolRuleHint').textContent = round.poolRule === 'keep'
+        ? 'ไม่คัดชื่อออก (สุ่มซ้ำได้)'
+        : 'ตัดชื่อที่ออกแล้วทันที';
+
+      const poolContainer = document.getElementById('poolChipsContainer');
+      const countMap = {};
+      round.draws.forEach(d => {
+        countMap[d.picked] = (countMap[d.picked] || 0) + 1;
+      });
+
+      poolContainer.innerHTML = round.candidates.map(name => {
+        const timesPicked = countMap[name] || 0;
+        const isRemoved = round.poolRule === 'remove' && timesPicked > 0;
+        if (isRemoved) {
+          return `<span class="px-2.5 py-1 rounded-lg text-xs bg-slate-100 text-slate-400 line-through border border-slate-200">${escapeHtml(name)} (ออกแล้ว)</span>`;
+        }
+        return `
+          <span class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
+            <span>${escapeHtml(name)}</span>
+            ${timesPicked > 0 ? `<span class="px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold">ออก ${timesPicked} ครั้ง</span>` : ''}
+          </span>
+        `;
+      }).join('');
+
+      // Render Announcement Board (View 2)
+      renderHistoryBoard(round, available, countMap);
+
+      // Render Admin Panel (View 3)
+      renderAdminPanel(round);
+    }
+
+    function renderHistoryBoard(round, available, countMap) {
+      document.getElementById('histStatTotalDraws').textContent = `${round.draws.length} ครั้ง`;
+      document.getElementById('histStatRemaining').textContent = `${available.length} ชื่อ`;
+      document.getElementById('histStatRule').textContent = round.poolRule === 'keep'
+        ? 'สุ่มซ้ำได้ (ไม่คัดออก)'
+        : 'ตัดชื่อออกเมื่อถูกจับ';
+
+      let topWinnerText = '-';
+      if (round.draws.length > 0) {
+        const latest = round.draws[round.draws.length - 1];
+        topWinnerText = `${latest.picked} (#${latest.order})`;
+      }
+      document.getElementById('histStatTopWinner').textContent = topWinnerText;
+
+      const tbody = document.getElementById('historyTableBody');
+      if (round.draws.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-8 text-center text-slate-400 text-xs">ยังไม่มีประวัติการจับสลากในงวดนี้</td>
+          </tr>
+        `;
+      } else {
+        tbody.innerHTML = round.draws.map(d => `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-4 font-bold text-slate-900">#${d.order}</td>
+            <td class="py-3 px-4 font-semibold text-slate-800">${escapeHtml(d.drawer)}</td>
+            <td class="py-3 px-4 font-bold text-emerald-700">${escapeHtml(d.picked)}</td>
+            <td class="py-3 px-4 text-xs text-slate-500">${modeLabel(d.mode)}</td>
+            <td class="py-3 px-4 text-xs text-slate-500">${d.timestamp}</td>
+          </tr>
+        `).join('');
+      }
+
+      document.getElementById('lineMessagePreview').textContent = buildLineAnnouncementText(round);
+    }
+
+    function renderAdminPanel(round) {
+      const lockScreen = document.getElementById('adminLockScreen');
+      const dashboard = document.getElementById('adminDashboard');
+      if (state.adminUnlocked) {
+        lockScreen.classList.add('hidden');
+        dashboard.classList.remove('hidden');
+      } else {
+        lockScreen.classList.remove('hidden');
+        dashboard.classList.add('hidden');
+        return;
+      }
+
+      // Render Rounds List in Admin
+      const listEl = document.getElementById('adminRoundsList');
+      listEl.innerHTML = state.rounds.map(r => {
+        const isCurrent = r.id === round.id;
+        return `
+          <div class="p-3 rounded-xl border ${isCurrent ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-200 bg-white'} flex items-center justify-between gap-2">
+            <button type="button" data-select-round="${r.id}" class="text-left flex-1 min-w-0">
+              <p class="font-bold text-xs sm:text-sm text-slate-800 truncate">${escapeHtml(r.title)}</p>
+              <p class="text-[11px] text-slate-500">${modeLabel(r.mode)} • รายชื่อ ${r.candidates.length} คน • จับแล้ว ${r.draws.length} ครั้ง</p>
+            </button>
+            ${state.rounds.length > 1 ? `
+              <button type="button" data-delete-round="${r.id}" class="p-1.5 text-slate-400 hover:text-rose-600 transition" title="ลบงวดนี้">
+                🗑️
+              </button>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      // Populate form with current round settings if not actively typing
+      document.getElementById('adminEditingRoundHeading').textContent = round.title;
+      const titleInput = document.getElementById('adminRoundTitle');
+      if (document.activeElement !== titleInput) {
+        titleInput.value = round.title;
+      }
+      const modeSelect = document.getElementById('adminRoundMode');
+      if (document.activeElement !== modeSelect) {
+        modeSelect.value = round.mode;
+      }
+
+      document.getElementById('radioRuleKeep').checked = round.poolRule === 'keep';
+      document.getElementById('radioRuleRemove').checked = round.poolRule === 'remove';
+      document.getElementById('chkLockDrawerOnce').checked = Boolean(round.lockDrawerOnce);
+
+      const namesTa = document.getElementById('adminTextareaNames');
+      if (document.activeElement !== namesTa) {
+        namesTa.value = round.candidates.join('\n');
+      }
+      document.getElementById('adminNamesCountLabel').textContent = `${round.candidates.length} รายชื่อ`;
+
+      const drawersTa = document.getElementById('adminTextareaDrawers');
+      if (document.activeElement !== drawersTa) {
+        drawersTa.value = (round.registeredDrawers || []).join('\n');
+      }
+
+      const liffInput = document.getElementById('inputLiffId');
+      if (liffInput && document.activeElement !== liffInput) {
+        liffInput.value = state.liffId || '';
+      }
+      const autoSendChk = document.getElementById('chkAutoSendLineChat');
+      if (autoSendChk) {
+        autoSendChk.checked = state.autoSendLineChat !== false;
+      }
+    }
+
+    // ====================================================
+    // VIEW TABS NAVIGATION
+    // ====================================================
+    function switchTab(tabName) {
+      const views = {
+        play: document.getElementById('viewPlay'),
+        history: document.getElementById('viewHistory'),
+        admin: document.getElementById('viewAdmin')
+      };
+      const btns = {
+        play: document.getElementById('tabBtnPlay'),
+        history: document.getElementById('tabBtnHistory'),
+        admin: document.getElementById('tabBtnAdmin')
+      };
+
+      Object.keys(views).forEach(k => {
+        if (k === tabName) {
+          views[k].classList.remove('hidden');
+          btns[k].className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-white text-slate-900 shadow-sm flex items-center gap-1';
+        } else {
+          views[k].classList.add('hidden');
+          btns[k].className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-slate-900 flex items-center gap-1';
+        }
+      });
+
+      renderAll();
+    }
+
+    // ====================================================
+    // EVENT LISTENERS
+    // ====================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      // Tab Navigation
+      document.getElementById('tabBtnPlay').addEventListener('click', () => switchTab('play'));
+      document.getElementById('tabBtnHistory').addEventListener('click', () => switchTab('history'));
+      document.getElementById('tabBtnAdmin').addEventListener('click', () => switchTab('admin'));
+      document.getElementById('btnGoAdminFromEmpty').addEventListener('click', () => switchTab('admin'));
+
+      // Sound Toggle
+      document.getElementById('btnToggleSound').addEventListener('click', () => {
+        state.soundEnabled = !state.soundEnabled;
+        saveState();
+        renderAll();
+        showToast(state.soundEnabled ? '🔊 เปิดเสียงเอฟเฟกต์แล้ว' : '🔇 ปิดเสียงเอฟเฟกต์แล้ว');
+      });
+
+      // Active Round Selector
+      document.getElementById('selectActiveRound').addEventListener('change', (e) => {
+        state.activeRoundId = e.target.value;
+        shuffledCardOrder = [];
+        saveState();
+        renderAll();
+        showToast('เปลี่ยนงวดที่ใช้งานเรียบร้อยแล้ว');
+      });
+
+      // Real LINE Profile or Simulated Fallback
+      document.getElementById('btnSimulateLineProfile').addEventListener('click', async () => {
+        if (liffRuntime.initialized) {
+          if (!liffRuntime.loggedIn && typeof window.liff !== 'undefined') {
+            window.liff.login();
+            return;
+          }
+          if (liffRuntime.profile && liffRuntime.profile.displayName) {
+            document.getElementById('inputDrawerName').value = liffRuntime.profile.displayName;
+            showToast(`ดึงชื่อจากบัญชี LINE จริงของคุณ: "${liffRuntime.profile.displayName}"`);
+            return;
+          }
+        }
+        const round = getActiveRound();
+        const usedSet = new Set(round.draws.map(d => d.drawer.toLowerCase()));
+        const pool = (round.registeredDrawers && round.registeredDrawers.length > 0)
+          ? round.registeredDrawers.filter(d => !round.lockDrawerOnce || !usedSet.has(d.toLowerCase()))
+          : ['คุณสมชาย (LINE)', 'คุณเมย์ (LINE)', 'คุณนนท์ (LINE)', 'คุณฟ้า (LINE)'];
+
+        if (pool.length === 0) {
+          showToast('รายชื่อผู้จับที่ลงทะเบียนไว้ใช้สิทธิ์ครบทุกคนแล้ว สามารถพิมพ์ชื่อใหม่ได้เลย', 'warning');
+          return;
+        }
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        document.getElementById('inputDrawerName').value = pick;
+        showToast(`ดึงชื่อผู้ใช้งานจาก LINE LIFF: "${pick}"`);
+      });
+
+      document.getElementById('btnClearDrawer').addEventListener('click', () => {
+        document.getElementById('inputDrawerName').value = '';
+        document.getElementById('inputDrawerName').focus();
+      });
+
+      // Delegate Quick Drawer Chips
+      document.getElementById('quickDrawerChips').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-drawer-chip]');
+        if (!btn) return;
+        const name = btn.getAttribute('data-drawer-chip');
+        document.getElementById('inputDrawerName').value = name;
+        showToast(`เลือกผู้จับสลาก: "${name}"`);
+      });
+
+      // Mode Switcher on Play Screen
+      ['Wheel', 'Cards', 'Box'].forEach(modeCap => {
+        const key = modeCap.toLowerCase();
+        document.getElementById(`modeSwitch${modeCap}`).addEventListener('click', () => {
+          if (isAnimating) return;
+          const round = getActiveRound();
+          round.mode = key;
+          shuffledCardOrder = [];
+          saveState();
+          renderAll();
+        });
+      });
+
+      // Spin Wheel Buttons
+      document.getElementById('btnSpinMain').addEventListener('click', handleSpinWheel);
+      document.getElementById('btnWheelCenterSpin').addEventListener('click', handleSpinWheel);
+
+      // Card Flip Shuffle
+      document.getElementById('btnShuffleCards').addEventListener('click', () => {
+        if (isAnimating) return;
+        playTickSound(640);
+        shuffleCardsDeck();
+        showToast('🔀 สับไพ่ทั้งหมดใหม่เรียบร้อย!');
+      });
+
+      // Mystery Box Buttons
+      document.getElementById('btnOpenMysteryBox').addEventListener('click', handleOpenMysteryBox);
+      document.getElementById('mysteryBoxVisual').addEventListener('click', handleOpenMysteryBox);
+
+      // Winner Modal Actions
+      document.getElementById('btnModalClose').addEventListener('click', closeWinnerModal);
+      document.getElementById('btnModalShareLine').addEventListener('click', () => {
+        if (!lastModalDraw) return;
+        const { drawRecord, round } = lastModalDraw;
+        const msg = `🎉 ประกาศผลจับสลาก (${round.title})\nลำดับที่ #${drawRecord.order}\n🙋 ผู้ที่จับ: ${drawRecord.drawer}\n🎯 จับได้ชื่อ: ${drawRecord.picked}\n⏰ เวลา: ${drawRecord.timestamp}`;
+        copyTextToClipboard(msg, 'คัดลอกผลผู้โชคดีสำหรับวางในแชต LINE แล้ว!');
+      });
+
+      // Copy Full Announcement Summary
+      document.getElementById('btnCopyLineSummaryQuick').addEventListener('click', () => {
+        const round = getActiveRound();
+        copyTextToClipboard(buildLineAnnouncementText(round), 'คัดลอกสรุปลำดับผู้จับ-ผู้ถูกจับทั้งหมดแล้ว!');
+      });
+      document.getElementById('btnCopyAnnouncementBoard').addEventListener('click', () => {
+        const round = getActiveRound();
+        copyTextToClipboard(buildLineAnnouncementText(round), 'คัดลอกตารางประกาศผลสำหรับส่งเข้า LINE แล้ว!');
+      });
+
+      // Export CSV
+      document.getElementById('btnExportCSV').addEventListener('click', () => {
+        const round = getActiveRound();
+        const rows = [['ลำดับที่', 'ชื่องวด', 'ผู้ที่จับ', 'ผู้ที่ถูกจับ', 'รูปแบบ', 'เวลา']];
+        round.draws.forEach(d => {
+          rows.push([d.order, round.title, d.drawer, d.picked, d.mode, d.timestamp]);
+        });
+        const csvContent = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `lucky-draw-${round.id}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showToast('ดาวน์โหลดไฟล์ CSV เรียบร้อยแล้ว');
+      });
+
+      // Admin Login
+      document.getElementById('formAdminLogin').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const pin = document.getElementById('inputAdminPin').value.trim();
+        if (pin === state.adminPin) {
+          state.adminUnlocked = true;
+          document.getElementById('inputAdminPin').value = '';
+          saveState();
+          renderAll();
+          showToast('เข้าสู่ระบบแอดมินสำเร็จ');
+        } else {
+          showToast('รหัส PIN ไม่ถูกต้อง (ค่าเริ่มต้นคือ 1234)', 'error');
+        }
+      });
+
+      document.getElementById('btnLockAdmin').addEventListener('click', () => {
+        state.adminUnlocked = false;
+        saveState();
+        renderAll();
+        showToast('ล็อกหน้าจอแอดมินแล้ว');
+      });
+
+      // Change Admin PIN
+      document.getElementById('btnOpenChangePinModal').addEventListener('click', () => {
+        const box = document.getElementById('boxChangePin');
+        box.classList.toggle('hidden');
+      });
+      document.getElementById('btnSaveNewPin').addEventListener('click', () => {
+        const newPin = document.getElementById('inputNewPin').value.trim();
+        if (newPin.length < 4) {
+          showToast('กรุณาตั้งรหัส PIN อย่างน้อย 4 หลัก', 'warning');
+          return;
+        }
+        state.adminPin = newPin;
+        document.getElementById('inputNewPin').value = '';
+        document.getElementById('boxChangePin').classList.add('hidden');
+        saveState();
+        showToast(`เปลี่ยนรหัส PIN แอดมินเป็น "${newPin}" เรียบร้อยแล้ว`);
+      });
+
+      // Create New Round
+      document.getElementById('btnCreateNewRound').addEventListener('click', () => {
+        const nextNum = state.rounds.length + 1;
+        const newRound = {
+          id: 'round_' + Date.now(),
+          title: `งวดที่ ${nextNum} — รอบจับสลากใหม่`,
+          mode: 'wheel',
+          poolRule: 'keep',
+          lockDrawerOnce: true,
+          candidates: ['ชื่อที่ 1', 'ชื่อที่ 2', 'ชื่อที่ 3', 'ชื่อที่ 4', 'ชื่อที่ 5'],
+          registeredDrawers: [],
+          draws: []
+        };
+        state.rounds.unshift(newRound);
+        state.activeRoundId = newRound.id;
+        shuffledCardOrder = [];
+        saveState();
+        renderAll();
+        showToast('สร้างงวดจับสลากใหม่เรียบร้อยแล้ว');
+      });
+
+      // Delegate Round Selection / Deletion in Admin List
+      document.getElementById('adminRoundsList').addEventListener('click', (e) => {
+        const delBtn = e.target.closest('[data-delete-round]');
+        if (delBtn) {
+          const delId = delBtn.getAttribute('data-delete-round');
+          if (state.rounds.length <= 1) return;
+          state.rounds = state.rounds.filter(r => r.id !== delId);
+          if (state.activeRoundId === delId) {
+            state.activeRoundId = state.rounds[0].id;
+          }
+          saveState();
+          renderAll();
+          showToast('ลบงวดเรียบร้อยแล้ว');
+          return;
+        }
+
+        const selBtn = e.target.closest('[data-select-round]');
+        if (selBtn) {
+          state.activeRoundId = selBtn.getAttribute('data-select-round');
+          shuffledCardOrder = [];
+          saveState();
+          renderAll();
+        }
+      });
+
+      // Live Line Counter on Names Textarea
+      document.getElementById('adminTextareaNames').addEventListener('input', (e) => {
+        const lines = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
+        document.getElementById('adminNamesCountLabel').textContent = `${lines.length} รายชื่อ`;
+      });
+
+      // Load Sample Names
+      document.getElementById('btnLoadSampleNames').addEventListener('click', () => {
+        const sample = [
+          'คุณสมชาย (ฝ่ายขาย)',
+          'คุณวิภาดา (การตลาด)',
+          'คุณกิตติพงศ์ (ไอที)',
+          'คุณนภัสสร (บัญชี)',
+          'คุณธนกร (คลังสินค้า)',
+          'คุณพิมพ์ชนก (HR)',
+          'คุณอานนท์ (ออกแบบ)',
+          'คุณชุติมา (บริการลูกค้า)'
+        ];
+        document.getElementById('adminTextareaNames').value = sample.join('\n');
+        document.getElementById('adminNamesCountLabel').textContent = `${sample.length} รายชื่อ`;
+        showToast('โหลดรายชื่อตัวอย่างแล้ว กดปุ่มบันทึกด้านล่างเพื่อใช้งาน');
+      });
+
+      // Reset Draws in Current Round
+      document.getElementById('btnResetRoundDraws').addEventListener('click', () => {
+        const round = getActiveRound();
+        round.draws = [];
+        shuffledCardOrder = [];
+        saveState();
+        renderAll();
+        showToast('รีเซ็ตประวัติการจับในงวดนี้เรียบร้อยแล้ว เริ่มจับลำดับที่ 1 ใหม่ได้เลย');
+      });
+
+      // Save Round Configuration
+      document.getElementById('btnSaveRoundConfig').addEventListener('click', () => {
+        const round = getActiveRound();
+        const newTitle = document.getElementById('adminRoundTitle').value.trim() || 'งวดจับสลาก';
+        const newMode = document.getElementById('adminRoundMode').value;
+        const newPoolRule = document.getElementById('radioRuleRemove').checked ? 'remove' : 'keep';
+        const newLockDrawer = document.getElementById('chkLockDrawerOnce').checked;
+
+        const rawNames = document.getElementById('adminTextareaNames').value
+          .split('\n')
+          .map(s => s.trim())
+          .filter(Boolean);
+
+        if (rawNames.length === 0) {
+          showToast('กรุณาใส่รายชื่อในสลากอย่างน้อย 1 ชื่อ', 'error');
+          return;
+        }
+
+        const rawDrawers = document.getElementById('adminTextareaDrawers').value
+          .split('\n')
+          .map(s => s.trim())
+          .filter(Boolean);
+
+        round.title = newTitle;
+        round.mode = newMode;
+        round.poolRule = newPoolRule;
+        round.lockDrawerOnce = newLockDrawer;
+        round.candidates = rawNames;
+        round.registeredDrawers = rawDrawers;
+        shuffledCardOrder = [];
+
+        saveState();
+        renderAll();
+        showToast('บันทึกการตั้งค่างวดและรายชื่อเรียบร้อยแล้ว!');
+      });
+
+      // LINE LIFF Specific Controls
+      document.getElementById('btnLiffLogin').addEventListener('click', () => {
+        if (liffRuntime.initialized && typeof window.liff !== 'undefined') {
+          window.liff.login();
+        } else {
+          showToast('กรุณาใส่รหัส LIFF ID ที่หน้าแอดมินก่อนล็อกอิน', 'warning');
+        }
+      });
+
+      document.getElementById('btnUseMyLineName').addEventListener('click', () => {
+        if (liffRuntime.profile && liffRuntime.profile.displayName) {
+          document.getElementById('inputDrawerName').value = liffRuntime.profile.displayName;
+          showToast(`ตั้งชื่อผู้จับเป็น "${liffRuntime.profile.displayName}" แล้ว`);
+        }
+      });
+
+      document.getElementById('btnModalNativeLineShare').addEventListener('click', () => {
+        if (!lastModalDraw) return;
+        const { drawRecord, round } = lastModalDraw;
+        const flexMsg = buildSingleDrawFlexMessage(drawRecord, round);
+        const plainMsg = `🎉 ประกาศผลจับสลาก (${round.title})\nลำดับที่ #${drawRecord.order}\n🙋 ผู้ที่จับ: ${drawRecord.drawer}\n🎯 จับได้ชื่อ: ${drawRecord.picked}\n⏰ เวลา: ${drawRecord.timestamp}`;
+        shareOrSendViaLiff(flexMsg, plainMsg, false);
+      });
+
+      document.getElementById('btnShareLineFlexQuick').addEventListener('click', () => {
+        const round = getActiveRound();
+        const flexMsg = buildSummaryFlexMessage(round);
+        const plainMsg = buildLineAnnouncementText(round);
+        shareOrSendViaLiff(flexMsg, plainMsg, false);
+      });
+
+      document.getElementById('btnSaveAndInitLiff').addEventListener('click', () => {
+        const val = document.getElementById('inputLiffId').value.trim();
+        state.liffId = val;
+        state.autoSendLineChat = document.getElementById('chkAutoSendLineChat').checked;
+        saveState();
+        initLineLiff(val);
+      });
+
+      document.getElementById('chkAutoSendLineChat').addEventListener('change', (e) => {
+        state.autoSendLineChat = e.target.checked;
+        saveState();
+      });
+
+      document.getElementById('btnToggleLiffGuide').addEventListener('click', () => {
+        document.getElementById('liffSetupGuideBox').classList.toggle('hidden');
+      });
+
+      // Initial Render & Auto-Connect LIFF if configured
+      renderAll();
+      initLineLiff();
+    });
+  </script>
+</body>
+</html>
