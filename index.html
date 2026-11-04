@@ -97,6 +97,10 @@
               <span id="liffStatusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
               <span id="liffStatusText">LINE LIFF</span>
             </span>
+            <button id="btnHeaderSyncCloud" type="button" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition" title="คลิกเพื่อซิงค์ข้อมูลล่าสุดจาก Google Sheets">
+              <span id="cloudStatusDot" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+              <span id="cloudStatusText">Google Sheet: รอเชื่อมต่อ</span>
+            </button>
           </div>
           <p id="headerRoundTitle" class="text-xs text-slate-500 truncate">กำลังโหลดงวด...</p>
         </div>
@@ -496,6 +500,69 @@
               </div>
             </div>
 
+            <!-- Google Sheets Cloud Database Card -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border-2 border-emerald-500/40 space-y-4">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+                    📊
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-slate-800 text-sm sm:text-base">ฐานข้อมูล Google Sheets (แก้แล้วไม่หาย 100%)</h3>
+                    <p class="text-[11px] text-slate-500">ซิงค์รายชื่อ กติกา และผลการจับสลากทุกเครื่องแบบเรียลไทม์</p>
+                  </div>
+                </div>
+                <span id="adminCloudBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 shrink-0">ยังไม่ได้ผูก URL</span>
+              </div>
+
+              <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-xs font-bold text-emerald-950 truncate">ไฟล์ Google Sheet ที่สร้างไว้ให้คุณแล้ว</p>
+                  <p class="text-[11px] text-emerald-700 truncate">มี 3 ตาราง: Draws_Log, Rounds_Config, App_State</p>
+                </div>
+                <a href="https://docs.google.com/spreadsheets/d/1Qnb9qZDpybgCwbnfW9llPheEqYw98aDBza86zxB4l1Y/edit" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition shrink-0">
+                  เปิดดู Google Sheet ↗
+                </a>
+              </div>
+
+              <div class="space-y-2.5">
+                <div>
+                  <label for="inputGasUrl" class="block text-xs font-semibold text-slate-700 mb-1">Google Apps Script Web App URL (<code class="text-[11px] text-emerald-700">https://script.google.com/macros/s/.../exec</code>)</label>
+                  <input id="inputGasUrl" type="url" placeholder="วางลิงก์ Web App URL ที่ได้จากการกด Deploy ใน Google Sheet..." class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                  <button id="btnSaveAndSyncGas" type="button" class="col-span-2 sm:col-span-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm transition">
+                    ☁️ บันทึก & ซิงค์ขึ้น Sheet
+                  </button>
+                  <button id="btnPullFromGas" type="button" class="py-2 px-3 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-semibold text-xs transition">
+                    🔄 ดึงข้อมูลจาก Sheet
+                  </button>
+                  <button id="btnToggleGasModal" type="button" class="py-2 px-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs transition">
+                    📋 คัดลอกโค้ด Apps Script
+                  </button>
+                </div>
+              </div>
+
+              <!-- Collapsible Apps Script Code & Setup Box -->
+              <div id="gasSetupBox" class="hidden bg-slate-900 text-slate-100 rounded-xl p-4 space-y-3 text-xs">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-bold text-emerald-400">วิธีเชื่อม Google Sheet เป็น Database (ทำครั้งเดียว 1 นาที):</span>
+                  <button id="btnCopyGasCode" type="button" class="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-[11px] transition">
+                    คัดลอกโค้ด Apps Script
+                  </button>
+                </div>
+                <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-300 leading-relaxed">
+                  <li>เปิดไฟล์ <strong>Google Sheet</strong> ด้านบน &rarr; ไปที่เมนู <strong>ส่วนขยาย (Extensions)</strong> &rarr; <strong>Apps Script</strong></li>
+                  <li>ลบโค้ดเก่าออกทั้งหมด แล้วกดปุ่ม <strong>"คัดลอกโค้ด Apps Script"</strong> ด้านบนไปวางแทนที่ จากนั้นกดเซฟ (💾)</li>
+                  <li>กดปุ่มสีน้ำเงินมุมขวาบน <strong>การทำให้ใช้งานได้ (Deploy)</strong> &rarr; <strong>การทำให้ใช้งานได้รายการใหม่ (New deployment)</strong></li>
+                  <li>เลือกประเภทเป็น <strong>เว็บแอป (Web app)</strong> &rarr; ช่อง <em>ผู้ที่มีสิทธิ์เข้าถึง (Who has access)</em> เลือกเป็น <strong>"ทุกคน" (Anyone)</strong> แล้วกด Deploy</li>
+                  <li>คัดลอก <strong>Web app URL</strong> ที่ลงท้ายด้วย <code class="text-emerald-300">/exec</code> มาวางในช่องด้านบนแล้วกดบันทึก!</li>
+                </ol>
+                <pre id="gasCodeSnippet" class="bg-slate-950 text-emerald-300 p-3 rounded-lg text-[10px] font-mono overflow-x-auto max-h-48 leading-relaxed select-all"></pre>
+              </div>
+            </div>
+
             <!-- LINE LIFF Integration Config Card -->
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
               <div class="flex items-center justify-between">
@@ -744,6 +811,8 @@
       adminUnlocked: false,
       soundEnabled: true,
       liffId: '',
+      gasUrl: '',
+      sheetUrl: 'https://docs.google.com/spreadsheets/d/1Qnb9qZDpybgCwbnfW9llPheEqYw98aDBza86zxB4l1Y/edit',
       autoSendLineChat: true,
       activeRoundId: 'round_1',
       rounds: [
@@ -1228,6 +1297,223 @@
       return null;
     }
 
+    // ====================================================
+    // GOOGLE SHEETS CLOUD DATABASE ENGINE (Apps Script Web App)
+    // ====================================================
+    const GAS_BACKEND_CODE = `// วางโค้ดนี้ใน ส่วนขยาย (Extensions) > Apps Script ของไฟล์ Google Sheet
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var stateSheet = ss.getSheetByName('App_State') || ss.insertSheet('App_State');
+  var data = stateSheet.getDataRange().getValues();
+  var stateJson = '';
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === 'STATE_JSON') {
+      stateJson = data[i][1];
+      break;
+    }
+  }
+  var result = { ok: true, state: stateJson ? JSON.parse(stateJson) : null };
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var body = JSON.parse(e.postData.contents);
+  var st = body.state;
+  var nowStr = Utilities.formatDate(new Date(), 'GMT+7', 'yyyy-MM-dd HH:mm:ss');
+
+  // 1. บันทึก JSON State หลักลงแท็บ App_State
+  var stateSheet = ss.getSheetByName('App_State') || ss.insertSheet('App_State');
+  stateSheet.clearContents();
+  stateSheet.appendRow(['Key', 'Value', 'Updated_At']);
+  stateSheet.appendRow(['ADMIN_PIN', st.adminPin || '1234', nowStr]);
+  stateSheet.appendRow(['ACTIVE_ROUND_ID', st.activeRoundId || '', nowStr]);
+  stateSheet.appendRow(['STATE_JSON', JSON.stringify(st), nowStr]);
+
+  // 2. อัปเดตตาราง Rounds_Config ให้อ่านง่ายใน Sheet
+  var roundSheet = ss.getSheetByName('Rounds_Config') || ss.insertSheet('Rounds_Config');
+  roundSheet.clearContents();
+  roundSheet.appendRow(['Round_ID', 'Round_Title', 'Mode', 'Pool_Rule', 'Lock_Drawer_Once', 'Candidates_List', 'Registered_Drawers']);
+  (st.rounds || []).forEach(function(r) {
+    roundSheet.appendRow([
+      r.id, r.title, r.mode, r.poolRule, r.lockDrawerOnce,
+      (r.candidates || []).join(', '),
+      (r.registeredDrawers || []).join(', ')
+    ]);
+  });
+
+  // 3. อัปเดตตารางประวัติการจับทั้งหมดลง Draws_Log
+  var logSheet = ss.getSheetByName('Draws_Log') || ss.insertSheet('Draws_Log');
+  logSheet.clearContents();
+  logSheet.appendRow(['Round_ID', 'Round_Title', 'Order_No', 'Drawer_Name', 'Picked_Winner', 'Mode', 'Timestamp']);
+  (st.rounds || []).forEach(function(r) {
+    (r.draws || []).forEach(function(d) {
+      logSheet.appendRow([r.id, r.title, d.order, d.drawer, d.picked, d.mode, d.timestamp]);
+    });
+  });
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, updatedAt: nowStr }))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+
+    let cloudSyncTimer = null;
+    let isCloudSyncing = false;
+
+    function getEffectiveGasUrl() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const fromUrl = params.get('gasUrl') || params.get('api');
+        if (fromUrl && fromUrl.trim()) {
+          state.gasUrl = fromUrl.trim();
+          setPersistentStorage(STORAGE_KEY, state);
+          return state.gasUrl;
+        }
+      } catch (e) {}
+      return (state.gasUrl || '').trim();
+    }
+
+    function updateCloudStatusUI(status, detail = '') {
+      const dot = document.getElementById('cloudStatusDot');
+      const text = document.getElementById('cloudStatusText');
+      const adminBadge = document.getElementById('adminCloudBadge');
+      if (!dot || !text) return;
+
+      if (status === 'synced') {
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
+        text.textContent = `Google Sheet: ซิงค์แล้ว ${detail}`;
+        if (adminBadge) {
+          adminBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0';
+          adminBadge.textContent = 'เชื่อมต่อ Google Sheet แล้ว ✓';
+        }
+      } else if (status === 'syncing') {
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping';
+        text.textContent = 'กำลังซิงค์ Google Sheet...';
+        if (adminBadge) {
+          adminBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 shrink-0';
+          adminBadge.textContent = 'กำลังซิงค์ข้อมูล...';
+        }
+      } else if (status === 'error') {
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+        text.textContent = 'Google Sheet: เชื่อมต่อไม่สำเร็จ';
+        if (adminBadge) {
+          adminBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-700 shrink-0';
+          adminBadge.textContent = 'ซิงค์ไม่สำเร็จ (ตรวจสอบ URL)';
+        }
+      } else {
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-slate-400';
+        text.textContent = 'Google Sheet: รอผูก URL';
+        if (adminBadge) {
+          adminBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 shrink-0';
+          adminBadge.textContent = 'ยังไม่ได้ผูก Web App URL';
+        }
+      }
+    }
+
+    async function pushStateToGoogleSheet(showNotification = false) {
+      const gasUrl = getEffectiveGasUrl();
+      if (!gasUrl) {
+        updateCloudStatusUI('unconfigured');
+        if (showNotification) {
+          showToast('กรุณาวางลิงก์ Google Apps Script Web App URL ก่อนครับ', 'warning');
+        }
+        return false;
+      }
+
+      updateCloudStatusUI('syncing');
+      isCloudSyncing = true;
+      try {
+        // Use text/plain to avoid CORS preflight block on Google Apps Script Web Apps
+        const response = await fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'saveState', state: state })
+        });
+        const resData = await response.json();
+        isCloudSyncing = false;
+        if (resData && resData.ok) {
+          const timeNow = new Date().toTimeString().split(' ')[0];
+          updateCloudStatusUI('synced', `(${timeNow})`);
+          if (showNotification) {
+            showToast('☁️ บันทึกข้อมูลทั้งหมดขึ้นฐานข้อมูล Google Sheets เรียบร้อยแล้ว!');
+          }
+          return true;
+        }
+        throw new Error('Invalid response');
+      } catch (err) {
+        isCloudSyncing = false;
+        updateCloudStatusUI('error');
+        if (showNotification) {
+          showToast('ไม่สามารถส่งข้อมูลไปที่ Google Sheets ได้ กรุณาตรวจสอบว่า Deploy เป็น "ทุกคน (Anyone)" แล้ว', 'error');
+        }
+        return false;
+      }
+    }
+
+    async function pullStateFromGoogleSheet(showNotification = false) {
+      const gasUrl = getEffectiveGasUrl();
+      if (!gasUrl) {
+        updateCloudStatusUI('unconfigured');
+        if (showNotification) {
+          showToast('กรุณาวางลิงก์ Google Apps Script Web App URL ก่อนครับ', 'warning');
+        }
+        return false;
+      }
+
+      updateCloudStatusUI('syncing');
+      try {
+        const sep = gasUrl.includes('?') ? '&' : '?';
+        const targetFetchUrl = new URL(`${gasUrl}${sep}t=${Date.now()}`).toString();
+        const response = await fetch(targetFetchUrl, {
+          method: 'GET'
+        });
+        const resData = await response.json();
+        if (resData && resData.ok) {
+          if (resData.state && Array.isArray(resData.state.rounds) && resData.state.rounds.length > 0) {
+            const keepUnlocked = state.adminUnlocked;
+            state = {
+              ...DEFAULT_STATE,
+              ...resData.state,
+              gasUrl: gasUrl,
+              adminUnlocked: keepUnlocked
+            };
+            setPersistentStorage(STORAGE_KEY, state);
+            shuffledCardOrder = [];
+            renderAll();
+            const timeNow = new Date().toTimeString().split(' ')[0];
+            updateCloudStatusUI('synced', `(${timeNow})`);
+            if (showNotification) {
+              showToast('🔄 ดึงข้อมูลล่าสุดจากฐานข้อมูล Google Sheets สำเร็จ!');
+            }
+            return true;
+          } else {
+            // Sheet is empty or newly initialized -> push current state to initialize it
+            await pushStateToGoogleSheet(false);
+            if (showNotification) {
+              showToast('เริ่มต้นฐานข้อมูลใหม่บน Google Sheets เรียบร้อยแล้ว!');
+            }
+            return true;
+          }
+        }
+        throw new Error('Invalid response');
+      } catch (err) {
+        updateCloudStatusUI('error');
+        if (showNotification) {
+          showToast('ดึงข้อมูลจาก Google Sheets ไม่สำเร็จ กรุณาตรวจสอบลิงก์ Web App URL', 'error');
+        }
+        return false;
+      }
+    }
+
+    function scheduleCloudPush() {
+      const gasUrl = getEffectiveGasUrl();
+      if (!gasUrl) return;
+      clearTimeout(cloudSyncTimer);
+      cloudSyncTimer = setTimeout(() => {
+        pushStateToGoogleSheet(false);
+      }, 650);
+    }
+
     function loadState() {
       const saved = getPersistentStorage(STORAGE_KEY);
       if (saved) {
@@ -1252,6 +1538,7 @@
 
     function saveState() {
       setPersistentStorage(STORAGE_KEY, state);
+      scheduleCloudPush();
     }
 
     function updateAutoSaveIndicator() {
@@ -2009,6 +2296,14 @@
       if (liffInput && document.activeElement !== liffInput) {
         liffInput.value = state.liffId || '';
       }
+      const gasInput = document.getElementById('inputGasUrl');
+      if (gasInput && document.activeElement !== gasInput) {
+        gasInput.value = state.gasUrl || '';
+      }
+      const gasPre = document.getElementById('gasCodeSnippet');
+      if (gasPre && !gasPre.textContent) {
+        gasPre.textContent = GAS_BACKEND_CODE;
+      }
       const autoSendChk = document.getElementById('chkAutoSendLineChat');
       if (autoSendChk) {
         autoSendChk.checked = state.autoSendLineChat !== false;
@@ -2411,6 +2706,8 @@
 
         const liffVal = document.getElementById('inputLiffId').value.trim();
         state.liffId = liffVal;
+        const gasVal = document.getElementById('inputGasUrl').value.trim();
+        state.gasUrl = gasVal;
         state.autoSendLineChat = document.getElementById('chkAutoSendLineChat').checked;
 
         saveState();
@@ -2529,9 +2826,52 @@
         reader.readAsText(file);
       });
 
-      // Initial Render & Auto-Connect LIFF if configured
+      // Google Sheets Cloud Sync Controls
+      document.getElementById('inputGasUrl').addEventListener('input', scheduleAutoSave);
+      document.getElementById('inputGasUrl').addEventListener('blur', triggerAutoSaveFromAdminInputs);
+
+      document.getElementById('btnSaveAndSyncGas').addEventListener('click', async () => {
+        triggerAutoSaveFromAdminInputs();
+        await pushStateToGoogleSheet(true);
+      });
+
+      document.getElementById('btnPullFromGas').addEventListener('click', async () => {
+        const val = document.getElementById('inputGasUrl').value.trim();
+        if (val) {
+          state.gasUrl = val;
+          setPersistentStorage(STORAGE_KEY, state);
+        }
+        await pullStateFromGoogleSheet(true);
+      });
+
+      document.getElementById('btnHeaderSyncCloud').addEventListener('click', async () => {
+        if (!getEffectiveGasUrl()) {
+          switchTab('admin');
+          showToast('ใส่ลิงก์ Google Apps Script Web App URL ในหน้าแอดมินเพื่อซิงค์กับ Google Sheets', 'warning');
+          return;
+        }
+        await pullStateFromGoogleSheet(true);
+      });
+
+      document.getElementById('btnToggleGasModal').addEventListener('click', () => {
+        const box = document.getElementById('gasSetupBox');
+        box.classList.toggle('hidden');
+        const gasPre = document.getElementById('gasCodeSnippet');
+        if (gasPre) gasPre.textContent = GAS_BACKEND_CODE;
+      });
+
+      document.getElementById('btnCopyGasCode').addEventListener('click', () => {
+        copyTextToClipboard(GAS_BACKEND_CODE, 'คัดลอกโค้ด Google Apps Script แล้ว! นำไปวางในเมนู Extensions > Apps Script ของ Google Sheet ได้เลย');
+      });
+
+      // Initial Render & Auto-Connect LIFF + Google Sheets Cloud DB
       renderAll();
       initLineLiff();
+      if (getEffectiveGasUrl()) {
+        pullStateFromGoogleSheet(false);
+      } else {
+        updateCloudStatusUI('unconfigured');
+      }
     });
   </script>
 </body>
